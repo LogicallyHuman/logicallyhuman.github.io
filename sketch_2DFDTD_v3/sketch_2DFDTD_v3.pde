@@ -3,7 +3,7 @@ import com.hamoid.*;
 Grid g;
 
 int gridSize = 250;
-int cellSize = 3;
+int cellSize = 4;
 
 void arrow(float x1, float y1, float x2, float y2) {
 
@@ -25,7 +25,10 @@ void setup() {
 
   g = new Grid(gridSize, gridSize);
   textSize(20);
-
+  float s = 0;
+  for(int i = -100; i < 100; i++)
+    s += S(0,i);
+  println(s);
   // g.q[gridSize/2][gridSize/2] = 1;
   // videoExport = new VideoExport(this, "hello.mp4");
   // videoExport.startMovie();
@@ -39,7 +42,21 @@ long drawTime = 0;
 
 
 float S(float i, float x) {
-  return (abs(x - i)<1.0) ? (1-abs(x - i)) : 0;
+  
+    x -= i;
+    
+    //return (abs(x)<1.0) ? (1-abs(x)) : 0;
+  
+    if(0 <= abs(x) && abs(x) <= 0.5){
+      return (0.75 - x*x);
+    }
+    else if(0.5 < abs(x) && abs(x) <= 1.5){
+      return 0.125*(3.0 - 2.0*abs(x))*(3.0 - 2.0*abs(x));
+    }
+    else{
+      return 0;
+    }
+  
 }
 
 float particleX = gridSize/2;
@@ -51,21 +68,29 @@ float particleYVel = 0;
 float particleXAcc = 0;
 float particleYAcc = 0;
 
-float q = 50;
+float q = 100;
 
 void draw() {
+  
+  
+
 
   stepTime = -millis();
 
   
 
-  for (int i = 0; i < 3; i++) {
+  //for (int i = 0; i < 3; i++) {
     
     int particleXVelSign = (int)((mouseX - particleX*cellSize)/abs(mouseX - particleX*cellSize));
     int particleYVelSign = (int)((mouseY - particleY*cellSize)/abs(mouseY - particleY*cellSize));
     
-    particleXVel = particleXVelSign*0.3/(1+exp(-0.05*abs(mouseX - particleX*cellSize) + 3));
-    particleYVel = particleYVelSign*0.3/(1+exp(-0.05*abs(mouseY - particleY*cellSize) + 3));
+   // particleXVel = particleXVelSign*0.3/(1+exp(-0.05*abs(mouseX - particleX*cellSize) + 3));
+   // particleYVel = particleYVelSign*0.3/(1+exp(-0.05*abs(mouseY - particleY*cellSize) + 3));
+   
+   //particleXVel = 0.7;//0.3*sin((float)frameNum/20);
+   particleXVel = 0.4*sin((float)frameNum/10);
+
+    
     g.step();
     //g.q[25][25] = q;
     for (int x = 0; x < gridSize-1; x++)
@@ -81,7 +106,7 @@ void draw() {
 
 
   //  println(particleXVel + ", " + particleYVel);
-  }
+ // }
   stepTime += millis();
 
   // println(particleX + "," + particleY);
@@ -98,9 +123,13 @@ void draw() {
       int x = xpix/cellSize;
       int y = ypix/cellSize;
 
-      float E = 100*sqrt(g.Ex[x][y]*g.Ex[x][y] + g.Ey[x][y]*g.Ey[x][y]);
-      float H = 100*abs(g.Hz[x][y]);
-      pixels[xpix + gridSize*cellSize*ypix] = color(E, H, 0);
+      int E = (int)(100*sqrt(g.Ex[x][y]*g.Ex[x][y] + g.Ey[x][y]*g.Ey[x][y]));
+      int H = (int)(100*abs(g.Hz[x][y]));
+      
+      E = min(E, 0xFF)*0x10000;
+      H = min(H, 0xFF)*0x100;
+      
+      pixels[xpix + gridSize*cellSize*ypix] = E | H | 0xFF000000 ;
     }
   }
   updatePixels();
