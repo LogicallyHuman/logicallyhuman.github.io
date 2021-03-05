@@ -1,8 +1,8 @@
 //const cellSize = 1;
 
 let gpucanvas = document.getElementById("canvas")
-gpucanvas.width = window.innerWidth;
-gpucanvas.height = window.innerHeight;
+gpucanvas.width = 500;
+gpucanvas.height = 500;
 
 
 var gridSizeX;
@@ -19,8 +19,8 @@ var Jy;
 const Cdtds = 0.7;
 
 function initSizes() {
-    gridSizeY = window.innerWidth;
-    gridSizeX = window.innerHeight;
+    gridSizeY = gpucanvas.height;//window.innerWidth;
+    gridSizeX = gpucanvas.width;//window.innerHeight;
 }
 
 function createField(sizeX, sizeY) {
@@ -80,10 +80,6 @@ function vectorLength(vector) {
 }
 
 function updateEx(Ex, Hz, Jx, Cdtds) {
-    //    value[this.thread.x][this.thread.y+1] = Ex[this.thread.x][this.thread.y+1] + Cdtds * (Hz[this.thread.x][this.thread.y+1] - Hz[this.thread.x][this.thread.y]) - Jx[this.thread.x][this.thread.y+1];
-    //value[this.thread.x][this.thread.y] = 0;
-    //if (this.thread.x == 0)
-    //    return 0;
     return Ex[this.thread.y][this.thread.x] + Cdtds * (Hz[this.thread.y][this.thread.x] - Hz[this.thread.y][this.thread.x - 1]) - Jx[this.thread.y][this.thread.x];
 }
 
@@ -97,7 +93,17 @@ function updateHz(Hz, Ex, Ey, Cdtds) {
     return Hz[this.thread.y][this.thread.x] + Cdtds * (Ex[this.thread.y][this.thread.x + 1] - Ex[this.thread.y][this.thread.x] - Ey[this.thread.y + 1][this.thread.x] + Ey[this.thread.y][this.thread.x]);
 }
 
+function calcDivEminusQ(Ex, Ey, q) {
+	return 0.2 * (Ex[this.thread.y][this.thread.x] + Ey[this.thread.y][this.thread.x] - Ex[this.thread.y - 1][this.thread.x] - Ey[this.thread.y][this.thread.x - 1] - q[this.thread.y][this.thread.x]);
+}
 
+function updateExWithDiv(Ex, divEminusQ){
+	return Ex[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y + 1][this.thread.x] - divEminusQ[this.thread.y][this.thread.x]);
+}
+
+function updateEyWithDiv(Ey, divEminusQ){
+	return Ey[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y][this.thread.x + 1] - divEminusQ[this.thread.y][this.thread.x]);
+}
 
 
 const updateExKernel = gpu.createKernel(updateEx);
@@ -109,6 +115,15 @@ updateEyKernel.setOutput([gridSizeY - 1, gridSizeX]);
 const updateHzKernel = gpu.createKernel(updateHz);
 updateHzKernel.setOutput([gridSizeY - 1, gridSizeX - 1]);
 
+const calcDivEminusQKernel = gpu.createKernel(calcDivEminusQ);
+calcDivEminusQKernel.setOutput([gridSizeY - 1, gridSizeX - 1]);
+
+const updateExWithDivKernel = gpu.createKernel(updateExWithDiv);
+updateExWithDivKernel.setOutput([gridSizeY, gridSizeX - 1]);
+
+const updateEyWithDivKernel = gpu.createKernel(updateEyWithDiv);
+updateEyWithDivKernel.setOutput([gridSizeY - 1, gridSizeX]);
+
 function renderOutput(Ex, Ey, Hz, Jx) {
     let E = Math.sqrt(Ex[this.thread.x][this.thread.y] * Ex[this.thread.x][this.thread.y] + Ey[this.thread.x][this.thread.y] * Ey[this.thread.x][this.thread.y]);
     let H = Math.abs(Hz[this.thread.x][this.thread.y]);
@@ -118,7 +133,7 @@ function renderOutput(Ex, Ey, Hz, Jx) {
 const renderOutputKernel = gpu.createKernel(renderOutput);
 
 renderOutputKernel.setGraphical(true)
-renderOutputKernel.setOutput([window.innerWidth, window.innerHeight]);
+renderOutputKernel.setOutput([gpucanvas.width, gpucanvas.height]);
 
 
 var frameRate = 1000 / 1;
@@ -188,19 +203,32 @@ function mainLoop(time) {  // time in ms accurate to 1 micro second 1/1,000,000t
 
     requestAnimationFrame(mainLoop);
 }
-const charge = 1;
+const charge = 10.0;
 
 function GPUCompute(){
-    Hz = updateHzKernel(Hz, Ex, Ey, Cdtds);
-    Ex = updateExKernel(Ex, Hz, Jx, Cdtds);
-    Ey = updateEyKernel(Ey, Hz, Jy, Cdtds);
+    //Hz = updateHzKernel(Hz, Ex, Ey, Cdtds);
+	//Hz[this.thread.y][this.thread.x] + Cdtds * (Ex[this.thread.y][this.thread.x + 1] - Ex[this.thread.y][this.thread.x] - Ey[this.thread.y + 1][this.thread.x] + Ey[this.thread.y][this.thread.x]);
+	for(x = 1; x < gridSizeX - 1; x++)
+		for(y = 1; y < gridSizeY - 1; y++){
+			Hz[x][y] += Cdtds * (Ex[x][y + 1] - Ex[x][y] - Ey[x + 1][y] + Ey[x][y]);
+		}
+    //Ex = updateExKernel(Ex, Hz, Jx, Cdtds);
+	for(x = 1; x < gridSizeX - 1; x++)
+		for(y = 1; y < gridSizeY - 1; y++){
+			Ex[x][y] += Cdtds * (Hz[x][y] - Hz[x][y-1]) -  Jx[x][y];
+		}
+    //Ey = updateEyKernel(Ey, Hz, Jy, Cdtds);
+	for(x = 1; x < gridSizeX - 1; x++)
+		for(y = 1; y < gridSizeY - 1; y++){
+			Ey[x][y] -= Cdtds * (Hz[x][y] - Hz[x- 1][y]) + Jy[x][y];
+		}
 }
 
 function doGameUpdate(delta) {
-        particleXVel = 0.5 * Math.sin(frameNum / 10);
+        particleXVel = 0.2 * Math.sin(frameNum / 10);
 
-        for (x = 400; x < gridSizeX - 1 - 400; x++)
-            for (y = 400; y < gridSizeY - 1 - 400; y++) {
+        for (x = 0; x < gridSizeX - 1; x++)
+            for (y = 0; y < gridSizeY - 1; y++) {
                 q[x][y] = charge * S(x, particleX) * S(y, particleY);
                 Jx[x][y] = charge * particleXVel * S(x + 0.5, particleX) * S(y, particleY);
                 Jy[x][y] = charge * particleYVel * S(x, particleX) * S(y + 0.5, particleY);
@@ -213,9 +241,20 @@ function doGameUpdate(delta) {
 
         GPUCompute();
 
-        for (let i = 0; i < 20; i++)
-            //applyGauss()
+	for(i = 0; i < 3; i++){
+	//	divEminusQ = calcDivEminusQKernel(Ex, Ey, q);
+		    for (x = 1; x < gridSizeX - 1; x++)
+        for (y = 1; y < gridSizeY - 1; y++)
+            divEminusQ[x][y] = 0.1 * (Ex[x][y] + Ey[x][y] - Ex[x - 1][y] - Ey[x][y - 1] - q[x][y]);
 
+		//Ex = updateExWithDivKernel(Ex, divEminusQ);
+		//Ey = updateEyWithDivKernel(Ey, divEminusQ);
+		    for (x = 0; x < gridSizeX - 2; x++)
+        for (y = 0; y < gridSizeY - 2; y++) {
+           Ex[x][y] += (divEminusQ[x + 1][y] - divEminusQ[x][y]);
+           Ey[x][y] += (divEminusQ[x][y + 1] - divEminusQ[x][y]);
+       }
+	}
             renderOutputKernel(Ex, Ey, Hz, Jx);
 
     
