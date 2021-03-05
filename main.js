@@ -225,7 +225,7 @@ function GPUCompute(){
 }
 
 function doGameUpdate(delta) {
-        particleXVel = 0.2 * Math.sin(frameNum / 10);
+        particleXVel = 0.2 * Math.sin(frameNum / 20);
 
         for (x = 0; x < gridSizeX - 1; x++)
             for (y = 0; y < gridSizeY - 1; y++) {
@@ -241,7 +241,7 @@ function doGameUpdate(delta) {
 
         GPUCompute();
 
-	for(i = 0; i < 3; i++){
+	for(i = 0; i < 6; i++){
 	//	divEminusQ = calcDivEminusQKernel(Ex, Ey, q);
 		    for (x = 1; x < gridSizeX - 1; x++)
         for (y = 1; y < gridSizeY - 1; y++)
