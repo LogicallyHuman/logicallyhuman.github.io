@@ -16,7 +16,7 @@ var divEminusQ;
 var Jx;
 var Jy;
 
-const Cdtds = 0.7;
+const Cdtds = 0.65;
 
 function initSizes() {
     gridSizeY = gpucanvas.height;//window.innerWidth;
