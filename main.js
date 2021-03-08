@@ -51,7 +51,7 @@ initArrays();
 
 //resizeCanvas();
 
-const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl'});
+const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl' });
 
 gpu.addFunction(f);
 gpu.addFunction(palette)
@@ -94,15 +94,15 @@ function updateHz(Hz, Ex, Ey, Cdtds) {
 }
 
 function calcDivEminusQ(Ex, Ey, q) {
-	return 0.2 * (Ex[this.thread.y][this.thread.x] + Ey[this.thread.y][this.thread.x] - Ex[this.thread.y - 1][this.thread.x] - Ey[this.thread.y][this.thread.x - 1] - q[this.thread.y][this.thread.x]);
+    return 0.2 * (Ex[this.thread.y][this.thread.x] + Ey[this.thread.y][this.thread.x] - Ex[this.thread.y - 1][this.thread.x] - Ey[this.thread.y][this.thread.x - 1] - q[this.thread.y][this.thread.x]);
 }
 
-function updateExWithDiv(Ex, divEminusQ){
-	return Ex[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y + 1][this.thread.x] - divEminusQ[this.thread.y][this.thread.x]);
+function updateExWithDiv(Ex, divEminusQ) {
+    return Ex[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y + 1][this.thread.x] - divEminusQ[this.thread.y][this.thread.x]);
 }
 
-function updateEyWithDiv(Ey, divEminusQ){
-	return Ey[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y][this.thread.x + 1] - divEminusQ[this.thread.y][this.thread.x]);
+function updateEyWithDiv(Ey, divEminusQ) {
+    return Ey[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y][this.thread.x + 1] - divEminusQ[this.thread.y][this.thread.x]);
 }
 
 
@@ -125,12 +125,12 @@ const updateEyWithDivKernel = gpu.createKernel(updateEyWithDiv);
 updateEyWithDivKernel.setOutput([gridSizeY - 1, gridSizeX]);
 /*
 const superKernel = gpu.combineKernels(updateExKernel, updateEyKernel, updateHzKernel, calcDivEminusQKernel, updateExWithDivKernel, updateEyWithDivKernel) {
-  	Hz = updateHzKernel(Hz, Ex, Ey, Cdtds);
-	Ex = updateExKernel(Ex, Hz, Jx, Cdtds);
-	Ey = updateEyKernel(Ey, Hz, Jy, Cdtds);
+        Hz = updateHzKernel(Hz, Ex, Ey, Cdtds);
+    Ex = updateExKernel(Ex, Hz, Jx, Cdtds);
+    Ey = updateEyKernel(Ey, Hz, Jy, Cdtds);
 
-		Ex = updateExWithDivKernel(Ex, divEminusQ);
-		Ey = updateEyWithDivKernel(Ey, divEminusQ);
+        Ex = updateExWithDivKernel(Ex, divEminusQ);
+        Ey = updateEyWithDivKernel(Ey, divEminusQ);
   
   return multiply(add(a, b), c);
 });*/
@@ -238,67 +238,44 @@ const charge = 10.0;
 
 var firstRun = true;
 
-function GPUCompute(){
-	Hz2 = updateHzKernel(Hz, Ex, Ey, Cdtds);
-	Ex2 = updateExKernel(Ex, Hz2, Jx, Cdtds);
-	Ey2 = updateEyKernel(Ey, Hz2, Jy, Cdtds);
-	
-	if(!firstRun){
-		Ex.delete();
-		Ey.delete();
-		Hz.delete();
-	}
-	else{
-		firstRun = false;
-	}
-	//Ex = Ex2.clone();
-	//Ey = Ey2.clone();
-	Hz = Hz2;
-	Ex = Ex2;
-	Ey = Ey2;
-	
-	
-	for(i = 0; i < 5; i++){
-		divEminusQ = calcDivEminusQKernel(Ex, Ey, q);
-	/*	    for (x = 1; x < gridSizeX - 1; x++)
-        for (y = 1; y < gridSizeY - 1; y++)
-            divEminusQ[x][y] = 0.1 * (Ex[x][y] + Ey[x][y] - Ex[x - 1][y] - Ey[x][y - 1] - q[x][y]);*/
+function GPUCompute() {
+    Hz2 = updateHzKernel(Hz, Ex, Ey, Cdtds);
+    Ex2 = updateExKernel(Ex, Hz2, Jx, Cdtds);
+    Ey2 = updateEyKernel(Ey, Hz2, Jy, Cdtds);
 
-		Ex2 = updateExWithDivKernel(Ex, divEminusQ);
-		Ey2 = updateEyWithDivKernel(Ey, divEminusQ);
-		
-		Ex.delete();
-		Ey.delete();
-		divEminusQ.delete();
-		Ex = Ex2;
-		Ey = Ey2;
-		
-		/*
-		    for (x = 0; x < gridSizeX - 2; x++)
-        for (y = 0; y < gridSizeY - 2; y++) {
-           Ex[x][y] += (divEminusQ[x + 1][y] - divEminusQ[x][y]);
-           Ey[x][y] += (divEminusQ[x][y + 1] - divEminusQ[x][y]);
-       }
-	}*/
-}
-	
+    if (!firstRun) {
+        Ex.delete();
+        Ey.delete();
+        Hz.delete();
+    }
+    else {
+        firstRun = false;
+    }
+    //Ex = Ex2.clone();
+    //Ey = Ey2.clone();
+    Hz = Hz2;
+    Ex = Ex2;
+    Ey = Ey2;
 
-	/*
-	for(x = 1; x < gridSizeX - 1; x++)
-		for(y = 1; y < gridSizeY - 1; y++){
-			Hz[x][y] += Cdtds * (Ex[x][y + 1] - Ex[x][y] - Ey[x + 1][y] + Ey[x][y]);
-		}
-	for(x = 1; x < gridSizeX - 1; x++)
-		for(y = 1; y < gridSizeY - 1; y++){
-			Ex[x][y] += Cdtds * (Hz[x][y] - Hz[x][y-1]) -  Jx[x][y];
-		}
-	for(x = 1; x < gridSizeX - 1; x++)
-		for(y = 1; y < gridSizeY - 1; y++){
-			Ey[x][y] -= Cdtds * (Hz[x][y] - Hz[x- 1][y]) + Jy[x][y];
-		}*/
-}
 
-function doGameUpdate(delta) {
+    for (i = 0; i < 5; i++) {
+        divEminusQ = calcDivEminusQKernel(Ex, Ey, q);
+        /*	    for (x = 1; x < gridSizeX - 1; x++)
+            for (y = 1; y < gridSizeY - 1; y++)
+                divEminusQ[x][y] = 0.1 * (Ex[x][y] + Ey[x][y] - Ex[x - 1][y] - Ey[x][y - 1] - q[x][y]);*/
+
+        Ex2 = updateExWithDivKernel(Ex, divEminusQ);
+        Ey2 = updateEyWithDivKernel(Ey, divEminusQ);
+
+        Ex.delete();
+        Ey.delete();
+        divEminusQ.delete();
+        Ex = Ex2;
+        Ey = Ey2;
+
+    }
+
+    function doGameUpdate(delta) {
         particleXVel = 0.2 * Math.sin(frameNum / 20);
 
         for (x = 0; x < gridSizeX - 1; x++)
@@ -308,18 +285,17 @@ function doGameUpdate(delta) {
                 Jy[x][y] = charge * particleYVel * S(x, particleX) * S(y + 0.5, particleY);
             }
 
-        //q[gridSizeX / 2][gridSizeY / 2] = 0;//Math.sin(frameNum/10);
         particleX += particleXVel;
         particleY += particleYVel;
         frameNum++;
 
-			GPUCompute();
+        GPUCompute();
 
 
-            renderOutputKernel(Ex, Ey, Hz, Jx);
-
-    
-}
+        renderOutputKernel(Ex, Ey, Hz, Jx);
 
 
-requestAnimationFrame(mainLoop);
+    }
+
+
+    requestAnimationFrame(mainLoop);
