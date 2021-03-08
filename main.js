@@ -274,6 +274,7 @@ function GPUCompute() {
         Ey = Ey2;
 
     }
+}
 
     function doGameUpdate(delta) {
         particleXVel = 0.2 * Math.sin(frameNum / 20);
