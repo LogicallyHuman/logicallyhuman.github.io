@@ -1,8 +1,11 @@
 //const cellSize = 1;
 
 let gpucanvas = document.getElementById("canvas")
-gpucanvas.width = 500;
-gpucanvas.height = 500;
+gpucanvas.width = 400;
+gpucanvas.height = 400;
+
+let fpsText = document.getElementById("fps-text");
+let timeText = document.getElementById("time-text");
 
 
 var gridSizeX;
@@ -56,7 +59,7 @@ const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl' });
 gpu.addFunction(f);
 gpu.addFunction(palette)
 gpu.addFunction(vectorLength);
-
+gpu.addFunction(S);
 
 
 
@@ -74,6 +77,28 @@ function palette(t, a, b, c, d) {
         a[2] + b[2] * Math.cos(6.28318 * (c[2] * t + d[2]))
     ];
 }
+function S(i, x) {
+	let scale = 0.1;
+	
+	x*=scale;
+	i*=scale;
+
+    x -= i;
+
+    //return (abs(x)<1.0) ? (1-abs(x)) : 0;
+
+    if (0.0 <= Math.abs(x) && Math.abs(x) <= 0.5) {
+        return (0.75 - x * x)*scale;
+    }
+    else if (0.5 < Math.abs(x) && Math.abs(x) <= 1.5) {
+        return 0.125 * (3.0 - 2.0 * Math.abs(x)) * (3.0 - 2.0 * Math.abs(x))*scale;
+    }
+    else {
+        return 0.0;
+    }
+
+}
+
 
 function vectorLength(vector) {
     return Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1]);
@@ -105,6 +130,23 @@ function updateEyWithDiv(Ey, divEminusQ) {
     return Ey[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y][this.thread.x + 1] - divEminusQ[this.thread.y][this.thread.x]);
 }
 
+function calculateQ(particleX, particleY){
+	let zero = 0.0;
+	
+	return S(zero + this.thread.y, particleX) * S(zero + this.thread.x, particleY)
+}
+
+function calculateJx(particleX, particleY, particleXVel){
+	let zero = 0.0;
+	
+	return particleXVel * S(0.5 + this.thread.y, particleX) * S(zero + this.thread.x, particleY);
+}
+
+function calculateJy(particleX, particleY, particleYVel){
+	let zero = 0.0;
+	
+	return particleYVel * S(zero + this.thread.y, particleX) * S(zero + this.thread.x, particleY);
+}
 
 const updateExKernel = gpu.createKernel(updateEx);
 updateExKernel.setOutput([gridSizeY, gridSizeX - 1]);
@@ -123,6 +165,15 @@ updateExWithDivKernel.setOutput([gridSizeY, gridSizeX - 1]);
 
 const updateEyWithDivKernel = gpu.createKernel(updateEyWithDiv);
 updateEyWithDivKernel.setOutput([gridSizeY - 1, gridSizeX]);
+
+const calculateQKernel = gpu.createKernel(calculateQ);
+calculateQKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+
+const calculateJxKernel = gpu.createKernel(calculateJx);
+calculateJxKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+
+const calculateJyKernel = gpu.createKernel(calculateJy);
+calculateJyKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
 /*
 const superKernel = gpu.combineKernels(updateExKernel, updateEyKernel, updateHzKernel, calcDivEminusQKernel, updateExWithDivKernel, updateEyWithDivKernel) {
         Hz = updateHzKernel(Hz, Ex, Ey, Cdtds);
@@ -158,8 +209,16 @@ calcDivEminusQKernel.setImmutable(true);
 updateExWithDivKernel.setImmutable(true);
 updateEyWithDivKernel.setImmutable(true);
 
-function renderOutput(Ex, Ey, Hz, Jx) {
-    this.color(10 * Math.sqrt(Ex[this.thread.x][this.thread.y] * Ex[this.thread.x][this.thread.y] + Ey[this.thread.x][this.thread.y] * Ey[this.thread.x][this.thread.y]), 10 * Math.abs(Hz[this.thread.x][this.thread.y]), 0);
+function renderOutput(Ex, Ey, Hz, Jx, q) {
+	if(q[this.thread.x][this.thread.y] > 0.004){
+		this.color(255,255,255);
+	}
+	else{
+		this.color(
+		10 * Math.sqrt(Ex[this.thread.x][this.thread.y] * Ex[this.thread.x][this.thread.y] + Ey[this.thread.x][this.thread.y] * Ey[this.thread.x][this.thread.y]),
+		10 * Math.abs(Hz[this.thread.x][this.thread.y]),
+		0);
+	}
 }
 const renderOutputKernel = gpu.createKernel(renderOutput);
 
@@ -167,7 +226,6 @@ renderOutputKernel.setGraphical(true)
 renderOutputKernel.setOutput([gpucanvas.width, gpucanvas.height]);
 
 
-var frameRate = 1000 / 1;
 var lastFrame = 0;
 var startTime;
 var currentFrame;
@@ -189,52 +247,22 @@ var delta = 0;
 
 interval = 1000 / 60;
 
-function applyGauss() {
-    let x, y;
+var scale = 0.1;
 
-    let d = 0.1;
-
-
-    for (x = 1; x < gridSizeX - 1; x++)
-        for (y = 1; y < gridSizeY - 1; y++)
-            divEminusQ[x][y] = d * (Ex[x][y] + Ey[x][y] - Ex[x - 1][y] - Ey[x][y - 1] - q[x][y]);
-
-    for (x = 0; x < gridSizeX - 2; x++)
-        for (y = 0; y < gridSizeY - 2; y++) {
-            Ex[x][y] += (divEminusQ[x + 1][y] - divEminusQ[x][y]);
-            Ey[x][y] += (divEminusQ[x][y + 1] - divEminusQ[x][y]);
-        }
-}
-
-function S(i, x) {
-
-    x -= i;
-
-    //return (abs(x)<1.0) ? (1-abs(x)) : 0;
-
-    if (0 <= Math.abs(x) && Math.abs(x) <= 0.5) {
-        return (0.75 - x * x);
-    }
-    else if (0.5 < Math.abs(x) && Math.abs(x) <= 1.5) {
-        return 0.125 * (3.0 - 2.0 * Math.abs(x)) * (3.0 - 2.0 * Math.abs(x));
-    }
-    else {
-        return 0;
-    }
-
-}
 
 function mainLoop(time) {  // time in ms accurate to 1 micro second 1/1,000,000th second
     delta = time - then;
 
     if (delta > interval) {
         then = time; // This weird stuff
+		timeText.innerHTML = (frameNum).toFixed("2");
+
         doGameUpdate(delta);
     }
-
     requestAnimationFrame(mainLoop);
+
 }
-const charge = 10.0;
+const charge = 1.0;
 
 var firstRun = true;
 
@@ -242,23 +270,19 @@ function GPUCompute() {
     Hz2 = updateHzKernel(Hz, Ex, Ey, Cdtds);
     Ex2 = updateExKernel(Ex, Hz2, Jx, Cdtds);
     Ey2 = updateEyKernel(Ey, Hz2, Jy, Cdtds);
-
     if (!firstRun) {
         Ex.delete();
         Ey.delete();
         Hz.delete();
-    }
-    else {
-        firstRun = false;
     }
     //Ex = Ex2.clone();
     //Ey = Ey2.clone();
     Hz = Hz2;
     Ex = Ex2;
     Ey = Ey2;
+	firstRun = false;
 
-
-    for (i = 0; i < 5; i++) {
+    for (i = 0; i < 3; i++) {
         divEminusQ = calcDivEminusQKernel(Ex, Ey, q);
         /*	    for (x = 1; x < gridSizeX - 1; x++)
             for (y = 1; y < gridSizeY - 1; y++)
@@ -266,35 +290,41 @@ function GPUCompute() {
 
         Ex2 = updateExWithDivKernel(Ex, divEminusQ);
         Ey2 = updateEyWithDivKernel(Ey, divEminusQ);
-
-        Ex.delete();
-        Ey.delete();
+		
+		//if (Ex.constructor.name == "GLTextureFloat2D") {
+			Ex.delete();
+			Ey.delete();
+		//}
         divEminusQ.delete();
         Ex = Ex2;
         Ey = Ey2;
 
     }
 }
-
+	var m = 1;
+	
     function doGameUpdate(delta) {
-        particleXVel = 0.2 * Math.sin(frameNum / 20);
+	fpsText.innerHTML = (1000.0/delta).toFixed("2");
+		
+		for(i = 0; i < m; i++){
+		
+			particleXVel = 5.0 * Math.sin(((frameNum-200.0) / 5.0));
 
-        for (x = 0; x < gridSizeX - 1; x++)
-            for (y = 0; y < gridSizeY - 1; y++) {
-                q[x][y] = charge * S(x, particleX) * S(y, particleY);
-                Jx[x][y] = charge * particleXVel * S(x + 0.5, particleX) * S(y, particleY);
-                Jy[x][y] = charge * particleYVel * S(x, particleX) * S(y + 0.5, particleY);
-            }
+			q =  calculateQKernel(particleX, particleY);
+			Jx = calculateJxKernel(particleX, particleY, particleXVel);
+			Jy = calculateJyKernel(particleX, particleY, particleYVel);
 
-        particleX += particleXVel;
-        particleY += particleYVel;
-        frameNum++;
+			
 
-        GPUCompute();
-
-
-        renderOutputKernel(Ex, Ey, Hz, Jx);
-
+			particleX += particleXVel/m;
+			particleY += particleYVel/m;
+			frameNum += 1.0/m;
+		
+			//for(i = 0; i < 5; i++)
+			GPUCompute();
+		}
+		
+        renderOutputKernel(Ex, Ey, Hz, Jx, q);
 
     }
 
