@@ -1,8 +1,8 @@
 //const cellSize = 1;
 
 let gpucanvas = document.getElementById("canvas")
-gpucanvas.width = 400;
-gpucanvas.height = 400;
+gpucanvas.width = 250;
+gpucanvas.height = 250;
 
 let fpsText = document.getElementById("fps-text");
 let timeText = document.getElementById("time-text");
@@ -20,6 +20,9 @@ var Jx;
 var Jy;
 
 const Cdtds = 0.7;
+
+
+
 
 function initSizes() {
     gridSizeY = gpucanvas.height;//window.innerWidth;
@@ -109,8 +112,6 @@ function updateEx(Ex, Hz, Jx, Cdtds) {
 }
 
 function updateEy(Ey, Hz, Jy, Cdtds) {
-    //if (this.thread.y == 0)
-    //return 0;
     return Ey[this.thread.y][this.thread.x] - Cdtds * (Hz[this.thread.y][this.thread.x] - Hz[this.thread.y - 1][this.thread.x]) - Jy[this.thread.y][this.thread.x];
 }
 
@@ -266,6 +267,13 @@ const charge = 1.0;
 
 var firstRun = true;
 
+function getCursorPosition(canvas, event) {
+    const rect = canvas.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const y = event.clientY - rect.top
+    console.log("x: " + x + " y: " + y)
+}
+
 function GPUCompute() {
     Hz2 = updateHzKernel(Hz, Ex, Ey, Cdtds);
     Ex2 = updateExKernel(Ex, Hz2, Jx, Cdtds);
@@ -303,12 +311,17 @@ function GPUCompute() {
 }
 	var m = 1;
 	
+	function out(){
+		        renderOutputKernel(Ex, Ey, Hz, Jx, q);
+
+	}
+	
     function doGameUpdate(delta) {
 	fpsText.innerHTML = (1000.0/delta).toFixed("2");
 		
 		for(i = 0; i < m; i++){
 		
-			particleXVel = 5.0 * Math.sin(((frameNum-200.0) / 5.0));
+//			particleXVel = 5.0 * Math.sin(((frameNum-200.0) / 5.0));
 
 			q =  calculateQKernel(particleX, particleY);
 			Jx = calculateJxKernel(particleX, particleY, particleXVel);
@@ -316,17 +329,42 @@ function GPUCompute() {
 
 			
 
-			particleX += particleXVel/m;
-			particleY += particleYVel/m;
+	//		particleX += particleXVel/m;
+//			particleY += particleYVel/m;
 			frameNum += 1.0/m;
 		
 			//for(i = 0; i < 5; i++)
 			GPUCompute();
 		}
-		
-        renderOutputKernel(Ex, Ey, Hz, Jx, q);
-
+		out();
+	let particleXNew = smoothness * mouseX + (1.0 - smoothness) * particleX;
+	let particleYNew = smoothness * mouseY + (1.0 - smoothness) * particleY;
+	
+	particleXVel = particleXNew - particleX;
+	particleYVel = particleYNew - particleY;
+	
+	particleX = particleXNew;
+	particleY = particleYNew;
+	
+	console.log(mouseX + " " + mouseY);
+	
     }
+	
+var smoothness = 0.2;
+var mouseX = gridSizeX/2;
+var mouseY = gridSizeY/2;
 
+function updateParticlePostion(canvas, event) {
+    const rect = canvas.getBoundingClientRect();
+    mouseX = event.clientX - rect.left;
+    mouseY = gridSizeY - event.clientY + rect.top;
+
+
+	
+}
+
+gpucanvas.addEventListener('mousemove', function(e) {
+    updateParticlePostion(gpucanvas, e)
+})
 
     requestAnimationFrame(mainLoop);
