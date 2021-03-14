@@ -1,8 +1,8 @@
 //const cellSize = 1;
 
 let gpucanvas = document.getElementById("canvas")
-gpucanvas.width = 250;
-gpucanvas.height = 250;
+gpucanvas.width = 500;
+gpucanvas.height = 500;
 
 let fpsText = document.getElementById("fps-text");
 let timeText = document.getElementById("time-text");
@@ -216,8 +216,8 @@ function renderOutput(Ex, Ey, Hz, Jx, q) {
 	}
 	else{
 		this.color(
-		10 * Math.sqrt(Ex[this.thread.x][this.thread.y] * Ex[this.thread.x][this.thread.y] + Ey[this.thread.x][this.thread.y] * Ey[this.thread.x][this.thread.y]),
-		10 * Math.abs(Hz[this.thread.x][this.thread.y]),
+		30 * Math.sqrt(Ex[this.thread.x][this.thread.y] * Ex[this.thread.x][this.thread.y] + Ey[this.thread.x][this.thread.y] * Ey[this.thread.x][this.thread.y]),
+		30 * Math.abs(Hz[this.thread.x][this.thread.y]),
 		0);
 	}
 }
