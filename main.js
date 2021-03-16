@@ -1,37 +1,34 @@
 //const cellSize = 1;
 
 let gpucanvas = document.getElementById("canvas")
-gpucanvas.width = 500;
-gpucanvas.height = 500;
 
-let fpsText = document.getElementById("fps-text");
-let timeText = document.getElementById("time-text");
+var gridSizeY = 500;
+var gridSizeX = 500;
+
+gpucanvas.width = gridSizeX;
+gpucanvas.height = gridSizeY;
+
+let gpuTimeText = document.getElementById("gputime-text");
+
+const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl' });
 
 
-var gridSizeX;
-var gridSizeY;
 
 var Hz;
 var Ex;
 var Ey;
 var q;
-var divEminusQ;
 var Jx;
 var Jy;
+var divEminusQ;
 
 const Cdtds = 0.7;
 
 
 
-
-function initSizes() {
-    gridSizeY = gpucanvas.height;//window.innerWidth;
-    gridSizeX = gpucanvas.width;//window.innerHeight;
-}
-
 function createField(sizeX, sizeY) {
     let a = new Array(sizeX);
-    for (let i = 0; i < gridSizeX; i++) {
+    for (let i = 0; i < sizeX; i++) {
         a[i] = new Array(sizeY);
         for (let j = 0; j < sizeY; j++) {
             a[i][j] = 0.0;
@@ -41,60 +38,34 @@ function createField(sizeX, sizeY) {
 }
 
 function initArrays() {
-    Hz = createField(gridSizeX - 1, gridSizeY - 1);
-    Ex = createField(gridSizeX - 1, gridSizeY);
-    Ey = createField(gridSizeX, gridSizeY - 1);
-    q = createField(gridSizeX, gridSizeY);
-    divEminusQ = createField(gridSizeX, gridSizeY);
-    Jx = createField(gridSizeX - 1, gridSizeY);
-    Jy = createField(gridSizeX, gridSizeY - 1);
+    Hz = createField(gridSizeY - 1, gridSizeX - 1);
+    Ex = createField(gridSizeY, gridSizeX - 1);
+    Ey = createField(gridSizeY - 1, gridSizeX);
+    q = createField(gridSizeY, gridSizeX);
+    divEminusQ = createField(gridSizeY, gridSizeX);
+    Jx = createField(gridSizeY, gridSizeX - 1);
+    Jy = createField(gridSizeY - 1, gridSizeX);
 }
 
 
-initSizes();
 initArrays();
 
 
-//resizeCanvas();
 
-const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl' });
-
-gpu.addFunction(f);
-gpu.addFunction(palette)
-gpu.addFunction(vectorLength);
-gpu.addFunction(S);
-
-
-
-function f(x, c) {
-    return [
-        (x[0] * x[0]) - (x[1] * x[1]) + c[0],
-        (x[0] * x[1]) + (x[0] * x[1]) + c[1],
-    ];
-}
-
-function palette(t, a, b, c, d) {
-    return [
-        a[0] + b[0] * Math.cos(6.28318 * (c[0] * t + d[0])),
-        a[1] + b[1] * Math.cos(6.28318 * (c[1] * t + d[1])),
-        a[2] + b[2] * Math.cos(6.28318 * (c[2] * t + d[2]))
-    ];
-}
 function S(i, x) {
-	let scale = 0.1;
-	
-	x*=scale;
-	i*=scale;
+    let scale = 0.05;
+
+    x *= scale;
+    i *= scale;
 
     x -= i;
 
-    //return (abs(x)<1.0) ? (1-abs(x)) : 0;
 
     if (0.0 <= Math.abs(x) && Math.abs(x) <= 0.5) {
-        return (0.75 - x * x)*scale;
+        return (0.75 - x * x) * scale;
     }
     else if (0.5 < Math.abs(x) && Math.abs(x) <= 1.5) {
-        return 0.125 * (3.0 - 2.0 * Math.abs(x)) * (3.0 - 2.0 * Math.abs(x))*scale;
+        return 0.125 * (3.0 - 2.0 * Math.abs(x)) * (3.0 - 2.0 * Math.abs(x)) * scale;
     }
     else {
         return 0.0;
@@ -102,100 +73,143 @@ function S(i, x) {
 
 }
 
+function updateEx(Ex, Hz, Jx) {
+    let i = this.thread.x;
+    let j = this.thread.y;
 
-function vectorLength(vector) {
-    return Math.sqrt(vector[0] * vector[0] + vector[1] * vector[1]);
+    let ret = 0.0;
+
+    if(j > 0)
+        ret -= Hz[j - 1][i];
+    if(j < this.constants.gridSizeY - 1)
+        ret += Hz[j][i];
+    ret *= this.constants.Cdtds;
+    ret += Ex[j][i] - Jx[j][i]; 
+    return ret;
 }
 
-function updateEx(Ex, Hz, Jx, Cdtds) {
-    return Ex[this.thread.y][this.thread.x] + Cdtds * (Hz[this.thread.y][this.thread.x] - Hz[this.thread.y][this.thread.x - 1]) - Jx[this.thread.y][this.thread.x];
+function updateEy(Ey, Hz, Jy) {
+    let i = this.thread.x;
+    let j = this.thread.y;
+
+    let ret = 0.0;
+
+    if(i > 0)
+        ret += Hz[j][i - 1];
+    if(i < this.constants.gridSizeX - 1)
+        ret -= Hz[j][i];
+    ret *= this.constants.Cdtds;
+    ret += Ey[j][i] - Jy[j][i]; 
+    return ret;
+        
 }
 
-function updateEy(Ey, Hz, Jy, Cdtds) {
-    return Ey[this.thread.y][this.thread.x] - Cdtds * (Hz[this.thread.y][this.thread.x] - Hz[this.thread.y - 1][this.thread.x]) - Jy[this.thread.y][this.thread.x];
-}
+function updateHz(Hz, Ex, Ey) {
+    let i = this.thread.x;
+    let j = this.thread.y;
 
-function updateHz(Hz, Ex, Ey, Cdtds) {
-    return Hz[this.thread.y][this.thread.x] + Cdtds * (Ex[this.thread.y][this.thread.x + 1] - Ex[this.thread.y][this.thread.x] - Ey[this.thread.y + 1][this.thread.x] + Ey[this.thread.y][this.thread.x]);
+    return Hz[j][i] + this.constants.Cdtds * (Ex[j + 1][i] - Ex[j][i] - Ey[j][i + 1] + Ey[j][i]);
 }
 
 function calcDivEminusQ(Ex, Ey, q) {
-    return 0.2 * (Ex[this.thread.y][this.thread.x] + Ey[this.thread.y][this.thread.x] - Ex[this.thread.y - 1][this.thread.x] - Ey[this.thread.y][this.thread.x - 1] - q[this.thread.y][this.thread.x]);
+    let i = this.thread.x;
+    let j = this.thread.y;
+
+    let ret = 0.0;
+
+    if(i < this.constants.gridSizeX - 1)
+        ret += Ex[j][i];
+    if(j < this.constants.gridSizeY - 1)
+        ret += Ey[j][i];
+    if(j > 0)
+        ret -= Ey[j - 1][i];
+    if(i > 0)
+        ret -= Ex[j][i - 1];
+    ret -= q[j][i];
+        return 0.24*ret;
+
 }
 
 function updateExWithDiv(Ex, divEminusQ) {
-    return Ex[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y + 1][this.thread.x] - divEminusQ[this.thread.y][this.thread.x]);
+    let i = this.thread.x;
+    let j = this.thread.y;
+
+    return Ex[j][i] + (divEminusQ[j][i + 1] - divEminusQ[j][i]);
 }
 
 function updateEyWithDiv(Ey, divEminusQ) {
-    return Ey[this.thread.y][this.thread.x] + (divEminusQ[this.thread.y][this.thread.x + 1] - divEminusQ[this.thread.y][this.thread.x]);
+    let i = this.thread.x;
+    let j = this.thread.y;
+
+    return Ey[j][i] + (divEminusQ[j + 1][i] - divEminusQ[j][i]);
 }
 
-function calculateQ(particleX, particleY){
-	let zero = 0.0;
-	
-	return S(zero + this.thread.y, particleX) * S(zero + this.thread.x, particleY)
+function calculateQ(particleX, particleY) {
+    let zero = 0.0;
+
+    return S(zero + this.thread.x, particleX) * S(zero + this.thread.y, particleY)
 }
 
-function calculateJx(particleX, particleY, particleXVel){
-	let zero = 0.0;
-	
-	return particleXVel * S(0.5 + this.thread.y, particleX) * S(zero + this.thread.x, particleY);
+function calculateJx(particleX, particleY, particleXVel) {
+    let zero = 0.0;
+
+    return particleXVel * S(0.5 + this.thread.x, particleX) * S(zero + this.thread.y, particleY);
 }
 
-function calculateJy(particleX, particleY, particleYVel){
-	let zero = 0.0;
-	
-	return particleYVel * S(zero + this.thread.y, particleX) * S(zero + this.thread.x, particleY);
+function calculateJy(particleX, particleY, particleYVel) {
+    let zero = 0.0;
+
+    return particleYVel * S(zero + this.thread.x, particleX) * S(zero + this.thread.y, particleY);
 }
+
+function renderOutput(Ex, Ey, Hz, Jx, q) {
+
+    let i = this.thread.x;
+    let j = this.thread.y;
+
+
+    if (q[j][i] > 0.001) {
+        this.color(255, 255, 255);
+    }
+    else {
+        this.color(
+            300 * Math.sqrt(Ex[j][i] * Ex[j][i] + Ey[j][i] * Ey[j][i]),
+            300 * Math.abs(Hz[j][i]),
+            0);
+    }
+}
+
+function globalVariables() {
+
+}
+
+gpu.addFunction(S);
+
 
 const updateExKernel = gpu.createKernel(updateEx);
-updateExKernel.setOutput([gridSizeY, gridSizeX - 1]);
-
 const updateEyKernel = gpu.createKernel(updateEy);
-updateEyKernel.setOutput([gridSizeY - 1, gridSizeX]);
-
 const updateHzKernel = gpu.createKernel(updateHz);
-updateHzKernel.setOutput([gridSizeY - 1, gridSizeX - 1]);
-
 const calcDivEminusQKernel = gpu.createKernel(calcDivEminusQ);
-calcDivEminusQKernel.setOutput([gridSizeY - 1, gridSizeX - 1]);
-
 const updateExWithDivKernel = gpu.createKernel(updateExWithDiv);
-updateExWithDivKernel.setOutput([gridSizeY, gridSizeX - 1]);
-
 const updateEyWithDivKernel = gpu.createKernel(updateEyWithDiv);
-updateEyWithDivKernel.setOutput([gridSizeY - 1, gridSizeX]);
-
 const calculateQKernel = gpu.createKernel(calculateQ);
-calculateQKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
-
 const calculateJxKernel = gpu.createKernel(calculateJx);
-calculateJxKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
-
 const calculateJyKernel = gpu.createKernel(calculateJy);
-calculateJyKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
-/*
-const superKernel = gpu.combineKernels(updateExKernel, updateEyKernel, updateHzKernel, calcDivEminusQKernel, updateExWithDivKernel, updateEyWithDivKernel) {
-        Hz = updateHzKernel(Hz, Ex, Ey, Cdtds);
-    Ex = updateExKernel(Ex, Hz, Jx, Cdtds);
-    Ey = updateEyKernel(Ey, Hz, Jy, Cdtds);
-
-        Ex = updateExWithDivKernel(Ex, divEminusQ);
-        Ey = updateEyWithDivKernel(Ey, divEminusQ);
-  
-  return multiply(add(a, b), c);
-});*/
+const renderOutputKernel = gpu.createKernel(renderOutput);
 
 
-/*
-updateExKernel.setOptimizeFloatMemory(true);
-updateEyKernel.setOptimizeFloatMemory(true);
-updateHzKernel.setOptimizeFloatMemory(true);
-calcDivEminusQKernel.setOptimizeFloatMemory(true);
-updateExWithDivKernel.setOptimizeFloatMemory(true);
-updateEyWithDivKernel.setOptimizeFloatMemory(true);
-*/
+updateExKernel.setOutput([gridSizeX-1, gridSizeY ]);
+updateEyKernel.setOutput([gridSizeX, gridSizeY-1]);
+updateHzKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+calcDivEminusQKernel.setOutput([gridSizeX, gridSizeY]);
+updateExWithDivKernel.setOutput([gridSizeX-1, gridSizeY ]);
+updateEyWithDivKernel.setOutput([gridSizeX, gridSizeY-1]);
+calculateQKernel.setOutput([gridSizeX, gridSizeY]);
+calculateJxKernel.setOutput([gridSizeX - 1, gridSizeY]);
+calculateJyKernel.setOutput([gridSizeX, gridSizeY - 1]);
+renderOutputKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+
+
 updateExKernel.setPipeline(true);
 updateEyKernel.setPipeline(true);
 updateHzKernel.setPipeline(true);
@@ -210,27 +224,19 @@ calcDivEminusQKernel.setImmutable(true);
 updateExWithDivKernel.setImmutable(true);
 updateEyWithDivKernel.setImmutable(true);
 
-function renderOutput(Ex, Ey, Hz, Jx, q) {
-	if(q[this.thread.x][this.thread.y] > 0.004){
-		this.color(255,255,255);
-	}
-	else{
-		this.color(
-		10 * Math.sqrt(Ex[this.thread.x][this.thread.y] * Ex[this.thread.x][this.thread.y] + Ey[this.thread.x][this.thread.y] * Ey[this.thread.x][this.thread.y]),
-		10 * Math.abs(Hz[this.thread.x][this.thread.y]),
-		0);
-	}
-}
-const renderOutputKernel = gpu.createKernel(renderOutput);
+updateExKernel.setConstants({ Cdtds: Cdtds, gridSizeX: gridSizeX, gridSizeY: gridSizeY });
+updateEyKernel.setConstants({ Cdtds: Cdtds, gridSizeX: gridSizeX, gridSizeY: gridSizeY });
+updateHzKernel.setConstants({ Cdtds: Cdtds, gridSizeX: gridSizeX, gridSizeY: gridSizeY });
+updateExWithDivKernel.setConstants({gridSizeX: gridSizeX, gridSizeY: gridSizeY });
+updateEyWithDivKernel.setConstants({gridSizeX: gridSizeX, gridSizeY: gridSizeY });
+calcDivEminusQKernel.setConstants({gridSizeX: gridSizeX, gridSizeY: gridSizeY });
 
 renderOutputKernel.setGraphical(true)
-renderOutputKernel.setOutput([gpucanvas.width, gpucanvas.height]);
 
 
 var lastFrame = 0;
 var startTime;
 var currentFrame;
-
 
 
 var particleX = gridSizeX / 2;
@@ -242,117 +248,102 @@ var particleYVel = 0;
 var frameNum = 0;
 
 
-var now = 0;
-var then = 0;
+
 var delta = 0;
 
 interval = 1000 / 60;
 
-var scale = 0.1;
 
-
-function mainLoop(time) {  // time in ms accurate to 1 micro second 1/1,000,000th second
+var then = 0;
+function simulationLoop(time) {
     delta = time - then;
 
     if (delta > interval) {
-        then = time; // This weird stuff
-		timeText.innerHTML = (frameNum).toFixed("2");
-
-        doGameUpdate(delta);
+        then = time;
+        simulationStep();
     }
-    requestAnimationFrame(mainLoop);
+    requestAnimationFrame(simulationLoop);
 
 }
+
+
 const charge = 1.0;
 
 var firstRun = true;
 
-function getCursorPosition(canvas, event) {
-    const rect = canvas.getBoundingClientRect()
-    const x = event.clientX - rect.left
-    const y = event.clientY - rect.top
-    console.log("x: " + x + " y: " + y)
-}
+function updateFields() {
+    Ex2 = updateExKernel(Ex, Hz, Jx);
+    Ey2 = updateEyKernel(Ey, Hz, Jy);
+    Hz2 = updateHzKernel(Hz, Ex2, Ey2);
 
-function GPUCompute() {
-    Hz2 = updateHzKernel(Hz, Ex, Ey, Cdtds);
-    Ex2 = updateExKernel(Ex, Hz2, Jx, Cdtds);
-    Ey2 = updateEyKernel(Ey, Hz2, Jy, Cdtds);
     if (!firstRun) {
         Ex.delete();
         Ey.delete();
         Hz.delete();
     }
-    //Ex = Ex2.clone();
-    //Ey = Ey2.clone();
+    firstRun = false;
     Hz = Hz2;
     Ex = Ex2;
     Ey = Ey2;
-	firstRun = false;
-
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 10; i++) {
         divEminusQ = calcDivEminusQKernel(Ex, Ey, q);
-        /*	    for (x = 1; x < gridSizeX - 1; x++)
-            for (y = 1; y < gridSizeY - 1; y++)
-                divEminusQ[x][y] = 0.1 * (Ex[x][y] + Ey[x][y] - Ex[x - 1][y] - Ey[x][y - 1] - q[x][y]);*/
-
         Ex2 = updateExWithDivKernel(Ex, divEminusQ);
         Ey2 = updateEyWithDivKernel(Ey, divEminusQ);
-		
-		//if (Ex.constructor.name == "GLTextureFloat2D") {
-			Ex.delete();
-			Ey.delete();
-		//}
+        Ex.delete();
+        Ey.delete();
         divEminusQ.delete();
         Ex = Ex2;
         Ey = Ey2;
 
     }
 }
-	var m = 1;
-	
-	function out(){
-		        renderOutputKernel(Ex, Ey, Hz, Jx, q);
+var m = 1;
 
-	}
-	
-    function doGameUpdate(delta) {
-	fpsText.innerHTML = (1000.0/delta).toFixed("2");
-		
-		for(i = 0; i < m; i++){
-		
-//			particleXVel = 5.0 * Math.sin(((frameNum-200.0) / 5.0));
+function out() {
+    renderOutputKernel(Ex, Ey, Hz, Jx, q);
+}
 
-			q =  calculateQKernel(particleX, particleY);
-			Jx = calculateJxKernel(particleX, particleY, particleXVel);
-			Jy = calculateJyKernel(particleX, particleY, particleYVel);
+var perfSmoothness = 0.05;
+var smoothedGpuTime = 0;
+function showPerformance(gpuTime) {
+    smoothedGpuTime = perfSmoothness * gpuTime + (1.0 - perfSmoothness) * smoothedGpuTime;
+    gpuTimeText.innerHTML = (smoothedGpuTime).toFixed("2");
 
-			
+}
 
-	//		particleX += particleXVel/m;
-//			particleY += particleYVel/m;
-			frameNum += 1.0/m;
-		
-			//for(i = 0; i < 5; i++)
-			GPUCompute();
-		}
-		out();
-	let particleXNew = smoothness * mouseX + (1.0 - smoothness) * particleX;
-	let particleYNew = smoothness * mouseY + (1.0 - smoothness) * particleY;
-	
-	particleXVel = particleXNew - particleX;
-	particleYVel = particleYNew - particleY;
-	
-	particleX = particleXNew;
-	particleY = particleYNew;
-	
-	console.log(mouseX + " " + mouseY);
-	
+function simulationStep() {
+    gpuTime = performance.now();
+
+    for (i = 0; i < m; i++) {
+        q = calculateQKernel(particleX, particleY);
+        Jx = calculateJxKernel(particleX, particleY, particleXVel);
+        Jy = calculateJyKernel(particleX, particleY, particleYVel);
+
+        frameNum += 1.0 / m;
+
+        updateFields();
     }
-	
+    out();
+
+    gpuTime = performance.now() - gpuTime;
+    showPerformance(gpuTime);
+
+
+    let particleXNew = smoothness * mouseX + (1.0 - smoothness) * particleX;
+    let particleYNew = smoothness * mouseY + (1.0 - smoothness) * particleY;
+
+    particleXVel = (particleXNew - particleX)/10;
+    particleYVel = (particleYNew - particleY)/10;
+
+    particleX = particleXNew;
+    particleY = particleYNew;
+
+
+}
+
 var smoothness = 0.2;
-var mouseX = gridSizeX/2;
-var mouseY = gridSizeY/2;
+var mouseX = gridSizeX / 2;
+var mouseY = gridSizeY / 2;
 
 function updateParticlePostion(canvas, event) {
     const rect = canvas.getBoundingClientRect();
@@ -360,11 +351,11 @@ function updateParticlePostion(canvas, event) {
     mouseY = gridSizeY - event.clientY + rect.top;
 
 
-	
+
 }
 
-gpucanvas.addEventListener('mousemove', function(e) {
+gpucanvas.addEventListener('mousemove', function (e) {
     updateParticlePostion(gpucanvas, e)
 })
 
-    requestAnimationFrame(mainLoop);
+requestAnimationFrame(simulationLoop);
