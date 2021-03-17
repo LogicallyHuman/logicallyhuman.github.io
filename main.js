@@ -2,7 +2,7 @@
 
 //Get needed HTML elements
 let gpucanvas = document.getElementById("canvas")
-let gpuTimeText = document.getElementById("gputime-text");
+let fpsText = document.getElementById("gputime-text");
 
 //Starting size
 var gridSizeX = 1000;
@@ -126,17 +126,17 @@ interval = 1000 / 60;
 
 
 var then = 0;
-var gpuTime = 0.0;
+var loopTime = 0.0;
 function simulationLoop(time) {
     delta = time - then;
 
     if (delta > interval) {
         then = time;
-        gpuTime = performance.now() - gpuTime;
-        showPerformance(gpuTime);
+        loopTime = performance.now() - loopTime;
+        showPerformance(1000/loopTime);
         simulationStep();
         simulationStep();
-        gpuTime = performance.now();
+        loopTime = performance.now();
 
 
 
@@ -186,10 +186,10 @@ function out() {
 }
 
 var perfSmoothness = 0.05;
-var smoothedGpuTime = 0;
-function showPerformance(gpuTime) {
-    smoothedGpuTime = perfSmoothness * gpuTime + (1.0 - perfSmoothness) * smoothedGpuTime;
-    gpuTimeText.innerHTML = (smoothedGpuTime).toFixed("2");
+var smoothedFps = 0;
+function showPerformance(fps) {
+    smoothedFps = perfSmoothness * fps + (1.0 - perfSmoothness) * smoothedFps;
+    fpsText.innerHTML = (smoothedFps).toFixed("2");
 
 }
 
