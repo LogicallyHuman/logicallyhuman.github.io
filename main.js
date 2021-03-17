@@ -6,7 +6,7 @@ let gpuTimeText = document.getElementById("gputime-text");
 
 //Starting size
 var gridSizeX = 1000;
-var gridSizeY = 1000;
+var gridSizeY = 500;
 
 //Courant number
 const Cdtds = 0.7;
@@ -126,15 +126,20 @@ interval = 1000 / 60;
 
 
 var then = 0;
+var gpuTime = 0.0;
 function simulationLoop(time) {
     delta = time - then;
 
     if (delta > interval) {
         then = time;
-        gpuTime = performance.now();
-        simulationStep();
         gpuTime = performance.now() - gpuTime;
         showPerformance(gpuTime);
+        simulationStep();
+        simulationStep();
+        gpuTime = performance.now();
+
+
+
     
     }
     requestAnimationFrame(simulationLoop);
@@ -145,6 +150,8 @@ function simulationLoop(time) {
 const charge = 1.0;
 
 var firstRun = true;
+
+
 
 function updateFields() {
     Ex2 = updateExKernel(Ex, Hz, Jx);
@@ -160,7 +167,7 @@ function updateFields() {
     Hz = Hz2;
     Ex = Ex2;
     Ey = Ey2;
-    for (i = 0; i < 100; i++) {
+    for (i = 0; i < 10; i++) {
         divEminusQ = calcDivEminusQKernel(Ex, Ey, q);
         Ex2 = updateExWithDivKernel(Ex, divEminusQ);
         Ey2 = updateEyWithDivKernel(Ey, divEminusQ);
