@@ -1,39 +1,56 @@
-function updateEx(Ex, Hz, Jx) {
+/*
+function updateEx(Ex, Ey, Hz, Jx, Jy, q) {
     let j = this.thread.x;
     let i = this.thread.y;
 
-    let ret = 0.0;
+    let CHz = 0.0;
 
     if(j > 0)
-        ret -= Hz[i][j - 1];
+        CHz -= Hz[i][j - 1];
     if(j < this.constants.sizeY - 1)
-        ret += Hz[i][j];
-    ret *= this.constants.Cdtds;
-    ret += Ex[i][j] - Jx[i][j]; 
-    return ret;
-}
+        CHz  += Hz[i][j];
+    return Ex[i][j] + CHz*this.constants.Cdtds - Jx[i][j]; 
+ }*/
 
-function updateEy(Ey, Hz, Jy) {
+
+function updateEx(Ex, Ey, Hz, Jx, Jy, q, mEx, mCHx, mJx) {
     let j = this.thread.x;
     let i = this.thread.y;
 
-    let ret = 0.0;
+    let CHx = 0.0;
+
+    if(j > 0)
+        CHx -= Hz[i][j - 1];
+    if(j < this.constants.sizeY - 1)
+        CHx  += Hz[i][j];
+
+    return mEx[i][j]*Ex[i][j] + mCHx[i][j]*CHx + mJx[i][j]*Jx[i][j]; 
+}
+
+
+
+function updateEy(Ex, Ey, Hz, Jx, Jy, q, mEy, mCHy, mJy) {
+    let j = this.thread.x;
+    let i = this.thread.y;
+
+    let CHy = 0.0;
 
     if(i > 0)
-        ret += Hz[i - 1][j];
+        CHy += Hz[i - 1][j];
     if(i < this.constants.sizeX - 1)
-        ret -= Hz[i][j];
-    ret *= this.constants.Cdtds;
-    ret += Ey[i][j] - Jy[i][j]; 
-    return ret;
+        CHy -= Hz[i][j];
+    
+    return mEy[i][j] * Ey[i][j] + mCHy[i][j]*CHy + mJy[i][j]*Jy[i][j]; 
+    
         
 }
 
-function updateHz(Hz, Ex, Ey) {
+function updateHz(Ex, Ey, Hz, Jx, Jy, q, mHz, mCEz) {
     let j = this.thread.x;
     let i = this.thread.y;
+    
 
-    return Hz[i][j] + this.constants.Cdtds * (Ex[i][j + 1] - Ex[i][j] - Ey[i + 1][j] + Ey[i][j]);
+    return mHz[i][j] * Hz[i][j] + mCEz[i][j] * (Ex[i][j + 1] - Ex[i][j] - Ey[i + 1][j] + Ey[i][j]);
 }
 
 function calcDivEminusQ(Ex, Ey, q) {
@@ -107,6 +124,12 @@ function renderOutput(Ex, Ey, Hz, Jx, q) {
 }
 
 
+
+function createTextureFromArray(array){
+    return array[this.thread.y][this.thread.x];
+}
+
+
 function  setupKernels(){
 
     updateExKernel = gpu.createKernel(updateEx);
@@ -119,7 +142,10 @@ function  setupKernels(){
     calculateJxKernel = gpu.createKernel(calculateJx);
     calculateJyKernel = gpu.createKernel(calculateJy);
     renderOutputKernel = gpu.createKernel(renderOutput);
-    
+    createTextureFromArrayForEx = gpu.createKernel(createTextureFromArray);
+    createTextureFromArrayForEy = gpu.createKernel(createTextureFromArray);
+    createTextureFromArrayForHz = gpu.createKernel(createTextureFromArray);
+
     updateExKernel.setOutput([gridSizeX, gridSizeY - 1 ]);
     updateEyKernel.setOutput([gridSizeX-1, gridSizeY]);
     updateHzKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
@@ -130,6 +156,9 @@ function  setupKernels(){
     calculateJxKernel.setOutput([gridSizeX, gridSizeY  - 1]);
     calculateJyKernel.setOutput([gridSizeX  - 1, gridSizeY]);
     renderOutputKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+    createTextureFromArrayForEx.setOutput([gridSizeX, gridSizeY - 1 ]);
+    createTextureFromArrayForEy.setOutput([gridSizeX - 1, gridSizeY]);
+    createTextureFromArrayForHz.setOutput([gridSizeX - 1, gridSizeY - 1 ]);    
     
     updateExKernel.setPipeline(true);
     updateEyKernel.setPipeline(true);
@@ -140,7 +169,9 @@ function  setupKernels(){
     calculateQKernel.setPipeline(true);
     calculateJxKernel.setPipeline(true);
     calculateJyKernel.setPipeline(true);
-    //renderOutputKernel.setPipeline(true);
+    createTextureFromArrayForEx.setPipeline(true);
+    createTextureFromArrayForEy.setPipeline(true);
+    createTextureFromArrayForHz.setPipeline(true);  
 
     updateExKernel.setImmutable(true);
     updateEyKernel.setImmutable(true);
@@ -151,7 +182,10 @@ function  setupKernels(){
     calculateQKernel.setImmutable(true);
     calculateJxKernel.setImmutable(true);
     calculateJyKernel.setImmutable(true);
-    
+    createTextureFromArrayForEx.setImmutable(true);
+    createTextureFromArrayForEy.setImmutable(true);
+    createTextureFromArrayForHz.setImmutable(true);  
+
     updateExKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });
     updateEyKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });
     updateHzKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });

@@ -6,7 +6,7 @@ let fpsText = document.getElementById("gputime-text");
 
 //Starting size
 var gridSizeX = 1000;
-var gridSizeY = 500;
+var gridSizeY = 1000;
 
 //Courant number
 const Cdtds = 0.7;
@@ -19,6 +19,8 @@ const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl2' });
 var Hz;//Texture
 var Ex;//Texture
 var Ey;//Texture
+var Dx;//Texture
+var Dy;//Texture
 var q;
 var Jx;
 var Jy;
@@ -95,10 +97,6 @@ function S(i, x) {
 }
 
 
-
-
-
-
 gpu.addFunction(S);
 
 
@@ -132,15 +130,10 @@ function simulationLoop(time) {
 
     if (delta > interval) {
         then = time;
-        loopTime = performance.now() - loopTime;
-        showPerformance(1000/loopTime);
+        showPerformance(1000 / delta);
         simulationStep();
         simulationStep();
-        loopTime = performance.now();
 
-
-
-    
     }
     requestAnimationFrame(simulationLoop);
 
@@ -151,12 +144,55 @@ const charge = 1.0;
 
 var firstRun = true;
 
+var mEx = createField(gridSizeY - 1, gridSizeX);
+var mCHx = createField(gridSizeY - 1, gridSizeX);
+var mJx = createField(gridSizeY - 1, gridSizeX);
+var mEy = createField(gridSizeY, gridSizeX - 1);
+var mCHy = createField(gridSizeY, gridSizeX - 1);
+var mJy = createField(gridSizeY, gridSizeX - 1);
+var mHz = createField(gridSizeY - 1, gridSizeX - 1);
+var mCEz = createField(gridSizeY - 1, gridSizeX - 1);
 
+
+
+for (i = 0; i < gridSizeX; i++)
+    for (j = 0; j < gridSizeY - 1; j++) {
+        mEx[j][i] = 1.0;
+        mCHx[j][i] = Cdtds;
+        mJx[j][i] = -1.0;
+
+    }
+
+
+
+for (i = 0; i < gridSizeX - 1; i++)
+    for (j = 0; j < gridSizeY; j++) {
+        mEy[j][i] = 1.0;
+        mCHy[j][i] = Cdtds;
+        mJy[j][i] = -1.0;
+    }
+
+for (i = 0; i < gridSizeX - 1; i++)
+    for (j = 0; j < gridSizeY - 1; j++) {
+        mHz[j][i] = 1.0;
+        mCEz[j][i] = Cdtds;
+    }
+
+mEx = createTextureFromArrayForEx(mEx);
+mCHx = createTextureFromArrayForEx(mCHx);
+mJx = createTextureFromArrayForEx(mJx);
+
+mEy = createTextureFromArrayForEy(mEy);
+mCHy = createTextureFromArrayForEy(mCHy);
+mJy = createTextureFromArrayForEy(mJy);
+
+mHz = createTextureFromArrayForHz(mHz);
+mCEz = createTextureFromArrayForHz(mCEz);
 
 function updateFields() {
-    Ex2 = updateExKernel(Ex, Hz, Jx);
-    Ey2 = updateEyKernel(Ey, Hz, Jy);
-    Hz2 = updateHzKernel(Hz, Ex2, Ey2);
+    Ex2 = updateExKernel(Ex, Ey, Hz, Jx, Jy, q, mEx, mCHx, mJx);
+    Ey2 = updateEyKernel(Ex, Ey, Hz, Jx, Jy, q, mEy, mCHy, mJy);
+    Hz2 = updateHzKernel(Ex2, Ey2, Hz, Jx, Jy, q, mHz, mCEz);
 
     if (!firstRun) {
         Ex.delete();
@@ -230,9 +266,6 @@ function updateParticlePostion(canvas, event) {
     const rect = canvas.getBoundingClientRect();
     mouseY = event.clientX - rect.left;
     mouseX = gridSizeY - event.clientY + rect.top;
-
-
-
 }
 
 gpucanvas.addEventListener('mousemove', function (e) {
