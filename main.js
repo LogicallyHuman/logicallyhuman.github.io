@@ -9,7 +9,7 @@ const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl2' });
 
 
 //Starting size
-var gridSizeX = 500;//window.innerWidth;
+var gridSizeX = 800;//window.innerWidth;
 var gridSizeY = 500;//window.innerHeight;
 
 const smoothness = 0.2;//Mouse smoothness

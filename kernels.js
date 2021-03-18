@@ -174,8 +174,8 @@ function renderOutput(Ex, Ey, Hz, Jx, q) {
     }
     else {
         this.color(
-            200 * Math.sqrt(Ex[i][j] * Ex[i][j] + Ey[i][j] * Ey[i][j]),
-            200 * Math.abs(Hz[i][j]),
+            300 * Math.sqrt(Ex[i][j] * Ex[i][j] + Ey[i][j] * Ey[i][j]),
+            300 * Math.abs(Hz[i][j]),
             0);
     }
 }
