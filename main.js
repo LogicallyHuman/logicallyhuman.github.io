@@ -5,7 +5,7 @@ let gpucanvas = document.getElementById("canvas")
 let fpsText = document.getElementById("gputime-text");
 
 //Starting size
-var gridSizeX = 500;
+var gridSizeX = 800;
 var gridSizeY = 500;
 
 //Courant number
@@ -169,14 +169,14 @@ for (let i = 0; i < gridSizeX; i++) {
     for (let j = 0; j < gridSizeY; j++) {
         if (i < PMLWidth)
             sigmaEy[j][i] = eps / (2.0 * dt) * (1.0 - i / PMLWidth) * (1.0 - i / PMLWidth) * (1.0 - i / PMLWidth);
-        if (i > gridSizeY - PMLWidth)
-            sigmaEy[j][i] = eps / (2.0 * dt) * (1.0 - (gridSizeY - i) / PMLWidth) * (1.0 - (gridSizeY - i) / PMLWidth) * (1.0 - (gridSizeY - i) / PMLWidth);
+        if (i > gridSizeX - PMLWidth)
+            sigmaEy[j][i] = eps / (2.0 * dt) * (1.0 - (gridSizeX - i) / PMLWidth) * (1.0 - (gridSizeX - i) / PMLWidth) * (1.0 - (gridSizeX - i) / PMLWidth);
 
         
         if (j < PMLWidth)
             sigmaEx[j][i] = eps / (2.0 * dt) * (1.0 - j / PMLWidth) * (1.0 - j / PMLWidth) * (1.0 - j / PMLWidth);
-        if (j > gridSizeX - PMLWidth)
-            sigmaEx[j][i] = eps / (2.0 * dt) * (1.0 - (gridSizeX - j) / PMLWidth) * (1.0 - (gridSizeX - j) / PMLWidth) * (1.0 - (gridSizeX - j) / PMLWidth);
+        if (j > gridSizeY - PMLWidth)
+            sigmaEx[j][i] = eps / (2.0 * dt) * (1.0 - (gridSizeY - j) / PMLWidth) * (1.0 - (gridSizeY - j) / PMLWidth) * (1.0 - (gridSizeY - j) / PMLWidth);
 
     }
 }
