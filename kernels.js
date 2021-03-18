@@ -13,7 +13,9 @@ function updateEx(Ex, Ey, Hz, Jx, Jy, q) {
  }*/
 
 
-function updateEx(Ex, Ey, Hz, Jx, Jy, q, mEx, mCHx, mJx) {
+//function updateEx(Ex, Ey, Hz, Jx, Jy, q, ICHx, IEx, mEx, mCHx, mJx, mICHx, mIEx) {
+
+function calcCHx(Hz){
     let j = this.thread.x;
     let i = this.thread.y;
 
@@ -24,12 +26,26 @@ function updateEx(Ex, Ey, Hz, Jx, Jy, q, mEx, mCHx, mJx) {
     if(j < this.constants.sizeY - 1)
         CHx  += Hz[i][j];
 
-    return mEx[i][j]*Ex[i][j] + mCHx[i][j]*CHx + mJx[i][j]*Jx[i][j]; 
+    return CHx; 
+}
+
+function updateSum(sum, value){
+    let j = this.thread.x;
+    let i = this.thread.y;
+
+    return sum[i][j] + value[i][j];
 }
 
 
 
-function updateEy(Ex, Ey, Hz, Jx, Jy, q, mEy, mCHy, mJy) {
+function updateEx(Ex, Ey, CHx, Jx, Jy, q, ICHx, IEx, mEx, mCHx, mJx, mICHx, mIEx) {
+    let j = this.thread.x;
+    let i = this.thread.y;
+
+    return mEx[i][j]*Ex[i][j] + mCHx[i][j]*CHx[i][j] + mJx[i][j]*Jx[i][j] + mICHx[i][j]*ICHx[i][j] + mIEx[i][j]*IEx[i][j]; 
+}
+
+function calcCHy(Hz){
     let j = this.thread.x;
     let i = this.thread.y;
 
@@ -39,18 +55,34 @@ function updateEy(Ex, Ey, Hz, Jx, Jy, q, mEy, mCHy, mJy) {
         CHy += Hz[i - 1][j];
     if(i < this.constants.sizeX - 1)
         CHy -= Hz[i][j];
+
+    return CHy; 
+}
+
+function updateEy(Ex, Ey, CHy, Jx, Jy, q, ICHy, IEy, mEy, mCHy, mJy, mICHy, mIEy) {
+    let j = this.thread.x;
+    let i = this.thread.y;
+
+
     
-    return mEy[i][j] * Ey[i][j] + mCHy[i][j]*CHy + mJy[i][j]*Jy[i][j]; 
+    return mEy[i][j] * Ey[i][j] + mCHy[i][j]*CHy[i][j] + mJy[i][j]*Jy[i][j] + mICHy[i][j]*ICHy[i][j] + mIEy[i][j]*IEy[i][j];  
     
         
 }
 
-function updateHz(Ex, Ey, Hz, Jx, Jy, q, mHz, mCEz) {
+function calcCEz(Ex, Ey){
+    let j = this.thread.x;
+    let i = this.thread.y;
+
+    return Ey[i+1][j] - Ey[i][j] - Ex[i][j + 1] + Ex[i][j]; 
+}
+
+function updateHz(CEz, Hz, Jx, Jy, q, ICEz, IHz, mHz, mCEz, mICEz, mIHz) {
     let j = this.thread.x;
     let i = this.thread.y;
     
 
-    return mHz[i][j] * Hz[i][j] + mCEz[i][j] * (Ex[i][j + 1] - Ex[i][j] - Ey[i + 1][j] + Ey[i][j]);
+    return mHz[i][j] * Hz[i][j] + mCEz[i][j] * CEz[i][j] + mICEz[i][j]*ICEz[i][j] + mIHz[i][j]*IHz[i][j];
 }
 
 function calcDivEminusQ(Ex, Ey, q) {
@@ -117,8 +149,8 @@ function renderOutput(Ex, Ey, Hz, Jx, q) {
     }
     else {
         this.color(
-            300 * Math.sqrt(Ex[i][j] * Ex[i][j] + Ey[i][j] * Ey[i][j]),
-            300 * Math.abs(Hz[i][j]),
+            200 * Math.sqrt(Ex[i][j] * Ex[i][j] + Ey[i][j] * Ey[i][j]),
+            200 * Math.abs(Hz[i][j]),
             0);
     }
 }
@@ -135,6 +167,12 @@ function  setupKernels(){
     updateExKernel = gpu.createKernel(updateEx);
     updateEyKernel = gpu.createKernel(updateEy);
     updateHzKernel = gpu.createKernel(updateHz);
+    updateExTypeSumKernel = gpu.createKernel(updateSum);
+    updateEyTypeSumKernel = gpu.createKernel(updateSum);
+    updateHzTypeSumKernel = gpu.createKernel(updateSum);
+    calcCHxKernel = gpu.createKernel(calcCHx);
+    calcCHyKernel = gpu.createKernel(calcCHy);
+    calcCEzKernel = gpu.createKernel(calcCEz);
     calcDivEminusQKernel = gpu.createKernel(calcDivEminusQ);
     updateExWithDivKernel = gpu.createKernel(updateExWithDiv);
     updateEyWithDivKernel = gpu.createKernel(updateEyWithDiv);
@@ -149,6 +187,12 @@ function  setupKernels(){
     updateExKernel.setOutput([gridSizeX, gridSizeY - 1 ]);
     updateEyKernel.setOutput([gridSizeX-1, gridSizeY]);
     updateHzKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+    updateExTypeSumKernel.setOutput([gridSizeX, gridSizeY - 1]);
+    updateEyTypeSumKernel.setOutput([gridSizeX - 1, gridSizeY]);
+    updateHzTypeSumKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+    calcCHxKernel.setOutput([gridSizeX, gridSizeY - 1 ]);
+    calcCHyKernel.setOutput([gridSizeX - 1, gridSizeY]);
+    calcCEzKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
     calcDivEminusQKernel.setOutput([gridSizeX, gridSizeY]);
     updateExWithDivKernel.setOutput([gridSizeX, gridSizeY - 1 ]);
     updateEyWithDivKernel.setOutput([gridSizeX - 1, gridSizeY]);
@@ -163,6 +207,12 @@ function  setupKernels(){
     updateExKernel.setPipeline(true);
     updateEyKernel.setPipeline(true);
     updateHzKernel.setPipeline(true);
+    updateExTypeSumKernel.setPipeline(true);
+    updateEyTypeSumKernel.setPipeline(true);
+    updateHzTypeSumKernel.setPipeline(true);
+    calcCHxKernel.setPipeline(true);
+    calcCHyKernel.setPipeline(true);
+    calcCEzKernel.setPipeline(true);
     calcDivEminusQKernel.setPipeline(true);
     updateExWithDivKernel.setPipeline(true);
     updateEyWithDivKernel.setPipeline(true);
@@ -176,6 +226,12 @@ function  setupKernels(){
     updateExKernel.setImmutable(true);
     updateEyKernel.setImmutable(true);
     updateHzKernel.setImmutable(true);
+    updateExTypeSumKernel.setImmutable(true);
+    updateEyTypeSumKernel.setImmutable(true);
+    updateHzTypeSumKernel.setImmutable(true);
+    calcCHxKernel.setImmutable(true);
+    calcCHyKernel.setImmutable(true);
+    calcCEzKernel.setImmutable(true);
     calcDivEminusQKernel.setImmutable(true);
     updateExWithDivKernel.setImmutable(true);
     updateEyWithDivKernel.setImmutable(true);
@@ -189,6 +245,9 @@ function  setupKernels(){
     updateExKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });
     updateEyKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });
     updateHzKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });
+    calcCHxKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });
+    calcCHyKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });
+    calcCEzKernel.setConstants({ Cdtds: Cdtds, sizeY: gridSizeX, sizeX: gridSizeY });
     updateExWithDivKernel.setConstants({sizeY: gridSizeX, sizeX: gridSizeY });
     updateEyWithDivKernel.setConstants({sizeY: gridSizeX, sizeX: gridSizeY });
     calcDivEminusQKernel.setConstants({sizeY: gridSizeX, sizeX: gridSizeY });
