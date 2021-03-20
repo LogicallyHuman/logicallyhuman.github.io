@@ -2,40 +2,30 @@
 <html lang="en">
 
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
+    <meta name="viewport" content="width=device-width" />
+
     <script src="https://cdn.jsdelivr.net/npm/gpu.js@latest/dist/gpu-browser.min.js"></script>
     <script src="kernels.js"></script>
     <script src="environments.js"></script>
     <script defer src="main.js"></script>
 
     <title>Feel an electron</title>
-    <link rel="stylesheet" href="style.css">
 </head>
 
 <body onkeypress="keyPress(event)">
-    <table>
-        <tr>
-            <td>
-                <canvas id="canvas" width="1" height="1"></canvas>
-            </td>
-            <td>
-                <table>
-                    <tr>
-                        <b id="gputime-text">0</b>
-                        <b>FPS</b>
-                        <br>
-            </td>
-            <td>
-                <button class="set-vacuum" onclick="setEnvVacuum()">Vacuum</button>
-                <button class="set-half-dielectric" onclick="setEnvHalfDielectric()">Half dielectric</button>
-                <button class="set-circle" onclick="setEnvCircle()">Circle</button>
-                <button class="set-parabolic-mirror" onclick="setEnvParabolicMirror()">Parabolic mirror</button>
-            </td>
-        </tr>
-        <tr>
-            Press R to reset fields
-        </tr>
-    </table>
+    <canvas id="canvas"></canvas><br>
+    <b>
+        <span id="gputime-text">0</span>FPS
+    </b><br>
+    <span class="reset-prompt">Press R to reset fields or </span>
+    <button onclick="clearFields()">Reset fields</button>
+    <br>
+    <button class="set-vacuum" onclick="setEnvVacuum()">Vacuum</button>
+    <button class="set-half-dielectric" onclick="setEnvHalfDielectric()">Half dielectric</button>
+    <button class="set-circle" onclick="setEnvCircle()">Circle</button>
+    <button class="set-parabolic-mirror" onclick="setEnvParabolicMirror()">Parabolic mirror</button>
 </body>
 
 </html>

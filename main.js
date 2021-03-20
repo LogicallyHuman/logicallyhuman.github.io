@@ -2,94 +2,106 @@
 let gpucanvas = document.getElementById("canvas");
 let fpsText = document.getElementById("gputime-text");
 
-
 //GPU
 const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl2' });
 
-
-
 //Starting size
-var gridSizeX = 400; //window.innerWidth;
-var gridSizeY = 400; //window.innerHeight;
+let gridSizeX = Math.min(800, Math.floor(window.innerWidth / 2));
+let gridSizeY = Math.min(800, Math.floor(window.innerHeight / 2));
 
-var cellSize = 2; //Cell size in pixels, resulting canvas size is gridSize*cellSize
+if (gridSizeX < gridSizeY) gridSizeY = gridSizeX;
+if (gridSizeY < gridSizeX) gridSizeX = gridSizeY;
+
+let cellSize = 1; //Cell size in pixels, resulting canvas size is gridSize*cellSize
 
 const smoothness = 0.2; //Mouse smoothness
 
-var mouseX = gridSizeY / (2 * cellSize); //Mouse position
-var mouseY = gridSizeX / (2 * cellSize);
+let mouseX = gridSizeY / (2 * cellSize); //Mouse position
+let mouseY = gridSizeX / (2 * cellSize);
 
 
 //Used for frame timing
-var delta = 0;
-var then = 0;
+let delta = 0;
+let then = 0;
 const interval = 1000 / 60;
 
 
 //Used for performance display
 const perfSmoothness = 0.05; //Performance numbers smoothing constant
-var smoothedFps = 0; //Recorded FPS
+let smoothedFps = 0; //Recorded FPS
 
-var newEnvironmentFunction = function() {};
+let newEnvironmentFunction = () => {};
 
 //Grid values
-var Ex; //EM Fields
-var Ey;
-var Hz;
-var q; //Source Fields
-var Jx;
-var Jy;
-var divEminusQ; //Aux field
-var mEx; //Update parameters for Ex
-var mCHx;
-var mICHx;
-var mJx;
-var mEy; //Update parameters for Ey
-var mCHy;
-var mICHy;
-var mJy;
-var mHz; //Update parameters for Hz
-var mCEz;
-var mIHz;
-var IHz; //Summations for PML
-var ICHy;
-var ICHx;
-var sigmaEx; //PML Sigmas
-var sigmaEy;
-var eps;
+let Ex; //EM Fields
+let Ey;
+let Hz;
+let q; //Source Fields
+let Jx;
+let Jy;
+let divEminusQ; //Aux field
+let mEx; //Update parameters for Ex
+let mCHx;
+let mICHx;
+let mJx;
+let mEy; //Update parameters for Ey
+let mCHy;
+let mICHy;
+let mJy;
+let mHz; //Update parameters for Hz
+let mCEz;
+let mIHz;
+let IHz; //Summations for PML
+let ICHy;
+let ICHx;
+let sigmaEx; //PML Sigmas
+let sigmaEy;
+let eps;
 
 //Kernels
-var updateExKernel; //Update equations
-var updateEyKernel;
-var updateHzKernel;
-var updateExTypeSumKernel; //Predefined kernels for summing
-var updateEyTypeSumKernel;
-var updateHzTypeSumKernel;
-var calcCHxKernel; //Curl calculation kernels
-var calcCHyKernel;
-var calcCEzKernel;
-var calcDivEminusQKernel; //Electrostatic field kernels
-var updateExWithDivKernel;
-var updateEyWithDivKernel;
-var calculateQKernel; //Source field kernels
-var calculateJxKernel;
-var calculateJyKernel;
-var renderOutputKernel; //Output kernel
-var createExSizeTextureKernel;
+let updateExKernel; //Update equations
+let updateEyKernel;
+let updateHzKernel;
+let updateExTypeSumKernel; //Predefined kernels for summing
+let updateEyTypeSumKernel;
+let updateHzTypeSumKernel;
+let calcCHxKernel; //Curl calculation kernels
+let calcCHyKernel;
+let calcCEzKernel;
+let calcDivEminusQKernel; //Electrostatic field kernels
+let updateExWithDivKernel;
+let updateEyWithDivKernel;
+let calculateQKernel; //Source field kernels
+let calculateJxKernel;
+let calculateJyKernel;
+let renderOutputKernel; //Output kernel
+let createExSizeTextureKernel;
 //Particle position
-var particleX = gridSizeY / 2;
-var particleY = gridSizeX / 2;
+let particleX = gridSizeY / 2;
+let particleY = gridSizeX / 2;
 
 //Particle velocity
-var particleXVel = 0;
-var particleYVel = 0;
+let particleXVel = 0;
+let particleYVel = 0;
 
 
 //Called when mouse updates
-function updateParticlePostion(canvas, event) {
+function updateParticlePostion(canvas, e) {
+    let x, y;
+
+    if (e.type.includes('touch')) {
+        let touch = e.touches[0] || e.changedTouches[0];
+        x = touch.pageX;
+        y = touch.pageY;
+    } else if (e.type.includes('mouse')) {
+        x = e.clientX;
+        y = e.clientY;
+    }
+
+
     const rect = canvas.getBoundingClientRect();
-    mouseY = (event.clientX - rect.left) / cellSize;
-    mouseX = gridSizeY - (event.clientY + rect.top) / cellSize + rect.top;
+    mouseY = (x - rect.left) / cellSize;
+    mouseX = gridSizeY - (y + rect.top) / cellSize + rect.top;
 }
 
 //Called when key is pressed
@@ -183,13 +195,13 @@ function setupUpdateParameters() {
 
 
 
-    var dx = 1.0; //DO NOT CHANGE!!!!!!!! This is assumed to be 1 in update equations
-    var dt = 0.6;
-    var mu = 1.0;
+    let dx = 1.0; //DO NOT CHANGE!!!!!!!! This is assumed to be 1 in update equations
+    let dt = 0.6;
+    let mu = 1.0;
 
-    var c = 1.0 / Math.sqrt(1 * mu);
+    let c = 1.0 / Math.sqrt(1 * mu);
 
-    var PMLWidth = 30;
+    let PMLWidth = 30;
 
     //Calculate PML Sigmas
     for (let i = 0; i < gridSizeX; i++) {
@@ -368,7 +380,7 @@ function simulationLoop(time) {
     if (delta > interval) {
         then = time;
         newEnvironmentFunction();
-        newEnvironmentFunction = function() {};
+        newEnvironmentFunction = () => {};
         showPerformance(1000 / delta);
         simulationStep(); //Execute 2 steps for faster simulation
         simulationStep();
@@ -379,6 +391,7 @@ function simulationLoop(time) {
 
 
 gpucanvas.addEventListener('mousemove', e => updateParticlePostion(gpucanvas, e)); //Setup mouse event
+gpucanvas.addEventListener('touchmove', e => updateParticlePostion(gpucanvas, e)); //Setup swipe event
 setupKernels(); //Setup kernels
 initFields(); //Setup fields
 setEnvVacuum(); //Setup default enviorment
