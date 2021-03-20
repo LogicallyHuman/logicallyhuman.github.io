@@ -1,5 +1,5 @@
 //Get needed HTML elements
-let gpucanvas = document.getElementById("canvas")
+let gpucanvas = document.getElementById("canvas");
 let fpsText = document.getElementById("gputime-text");
 
 
@@ -9,14 +9,14 @@ const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl2' });
 
 
 //Starting size
-var gridSizeX = 400;//window.innerWidth;
-var gridSizeY = 400;//window.innerHeight;
+var gridSizeX = 400; //window.innerWidth;
+var gridSizeY = 400; //window.innerHeight;
 
-var cellSize = 2;//Cell size in pixels, resulting canvas size is gridSize*cellSize
+var cellSize = 2; //Cell size in pixels, resulting canvas size is gridSize*cellSize
 
-const smoothness = 0.2;//Mouse smoothness
+const smoothness = 0.2; //Mouse smoothness
 
-var mouseX = gridSizeY / (2 * cellSize);//Mouse position
+var mouseX = gridSizeY / (2 * cellSize); //Mouse position
 var mouseY = gridSizeX / (2 * cellSize);
 
 
@@ -27,54 +27,54 @@ const interval = 1000 / 60;
 
 
 //Used for performance display
-const perfSmoothness = 0.05;//Performance numbers smoothing constant
-var smoothedFps = 0;//Recorded FPS
+const perfSmoothness = 0.05; //Performance numbers smoothing constant
+var smoothedFps = 0; //Recorded FPS
 
-var newEnvironmentFunction = function(){};
+var newEnvironmentFunction = function() {};
 
 //Grid values
-var Ex;//EM Fields
+var Ex; //EM Fields
 var Ey;
 var Hz;
-var q;//Source Fields
+var q; //Source Fields
 var Jx;
 var Jy;
-var divEminusQ;//Aux field
-var mEx;//Update parameters for Ex
+var divEminusQ; //Aux field
+var mEx; //Update parameters for Ex
 var mCHx;
 var mICHx;
 var mJx;
-var mEy;//Update parameters for Ey
+var mEy; //Update parameters for Ey
 var mCHy;
 var mICHy;
 var mJy;
-var mHz;//Update parameters for Hz
+var mHz; //Update parameters for Hz
 var mCEz;
 var mIHz;
-var IHz;//Summations for PML
+var IHz; //Summations for PML
 var ICHy;
 var ICHx;
-var sigmaEx;//PML Sigmas
+var sigmaEx; //PML Sigmas
 var sigmaEy;
 var eps;
 
 //Kernels
-var updateExKernel;//Update equations
+var updateExKernel; //Update equations
 var updateEyKernel;
 var updateHzKernel;
-var updateExTypeSumKernel;//Predefined kernels for summing
+var updateExTypeSumKernel; //Predefined kernels for summing
 var updateEyTypeSumKernel;
 var updateHzTypeSumKernel;
-var calcCHxKernel;//Curl calculation kernels
+var calcCHxKernel; //Curl calculation kernels
 var calcCHyKernel;
 var calcCEzKernel;
-var calcDivEminusQKernel;//Electrostatic field kernels
+var calcDivEminusQKernel; //Electrostatic field kernels
 var updateExWithDivKernel;
 var updateEyWithDivKernel;
-var calculateQKernel;//Source field kernels
+var calculateQKernel; //Source field kernels
 var calculateJxKernel;
 var calculateJyKernel;
-var renderOutputKernel;//Output kernel
+var renderOutputKernel; //Output kernel
 var createExSizeTextureKernel;
 //Particle position
 var particleX = gridSizeY / 2;
@@ -88,18 +88,18 @@ var particleYVel = 0;
 //Called when mouse updates
 function updateParticlePostion(canvas, event) {
     const rect = canvas.getBoundingClientRect();
-    mouseY = (event.clientX - rect.left)/cellSize;
-    mouseX = gridSizeY - (event.clientY + rect.top)/cellSize + rect.top;
+    mouseY = (event.clientX - rect.left) / cellSize;
+    mouseX = gridSizeY - (event.clientY + rect.top) / cellSize + rect.top;
 }
 
 //Called when key is pressed
-function keyPress(event){
-    if(event.keyCode == 114){
+function keyPress(event) {
+    if (event.keyCode == 114) {
         clearFields();
     }
 }
 
-function createArray(sizeX, sizeY) {//Creates a 2D array
+function createArray(sizeX, sizeY) { //Creates a 2D array
     let a = new Array(sizeX);
     for (let i = 0; i < sizeX; i++) {
         a[i] = new Array(sizeY);
@@ -112,7 +112,7 @@ function createArray(sizeX, sizeY) {//Creates a 2D array
 }
 
 
-function showPerformance(fps) {//Update HTML Performance numbers
+function showPerformance(fps) { //Update HTML Performance numbers
     smoothedFps = perfSmoothness * fps + (1.0 - perfSmoothness) * smoothedFps;
     fpsText.innerHTML = (smoothedFps).toFixed("2");
 }
@@ -138,7 +138,7 @@ function initFields() {
     ICHy = createEySizeEmptyTextureKernel();
     IHz = createHzSizeEmptyTextureKernel();
 
-        
+
     sigmaEx = createArray(gridSizeX, gridSizeY);
     sigmaEy = createArray(gridSizeX, gridSizeY);
 
@@ -147,20 +147,20 @@ function initFields() {
 }
 
 
-function setupUpdateParameters(){
+function setupUpdateParameters() {
 
-    if(typeof(mEx) != "undefined"){//If the parameters already exist, delete them
-    mEx.delete();
-    mCHx.delete();
-    mICHx.delete();
-    mJx.delete();
-    mEy.delete();
-    mCHy.delete();
-    mICHy.delete();
-    mJy.delete();
-    mHz.delete();
-    mCEz.delete();
-    mIHz.delete();
+    if (typeof(mEx) != "undefined") { //If the parameters already exist, delete them
+        mEx.delete();
+        mCHx.delete();
+        mICHx.delete();
+        mJx.delete();
+        mEy.delete();
+        mCHy.delete();
+        mICHy.delete();
+        mJy.delete();
+        mHz.delete();
+        mCEz.delete();
+        mIHz.delete();
     }
 
     //Update parameters for Ex update equation
@@ -181,12 +181,12 @@ function setupUpdateParameters(){
     ARRmIHz = createArray(gridSizeY - 1, gridSizeX - 1);
 
 
-    
+
 
     var dx = 1.0; //DO NOT CHANGE!!!!!!!! This is assumed to be 1 in update equations
     var dt = 0.6;
     var mu = 1.0;
-    
+
     var c = 1.0 / Math.sqrt(1 * mu);
 
     var PMLWidth = 30;
@@ -198,16 +198,16 @@ function setupUpdateParameters(){
                 sigmaEy[j][i] = eps[j][i] / (2.0 * dt) * (1.0 - i / PMLWidth) * (1.0 - i / PMLWidth) * (1.0 - i / PMLWidth);
             if (i > gridSizeX - PMLWidth)
                 sigmaEy[j][i] = eps[j][i] / (2.0 * dt) * (1.0 - (gridSizeX - i) / PMLWidth) * (1.0 - (gridSizeX - i) / PMLWidth) * (1.0 - (gridSizeX - i) / PMLWidth);
-    
-    
+
+
             if (j < PMLWidth)
                 sigmaEx[j][i] = eps[j][i] / (2.0 * dt) * (1.0 - j / PMLWidth) * (1.0 - j / PMLWidth) * (1.0 - j / PMLWidth);
             if (j > gridSizeY - PMLWidth)
                 sigmaEx[j][i] = eps[j][i] / (2.0 * dt) * (1.0 - (gridSizeY - j) / PMLWidth) * (1.0 - (gridSizeY - j) / PMLWidth) * (1.0 - (gridSizeY - j) / PMLWidth);
-    
+
         }
     }
-    
+
 
 
     //Set Ex parameters
@@ -220,7 +220,7 @@ function setupUpdateParameters(){
             ARRmJx[j][i] = -1.0 / eps[j][i];
         }
     }
-    
+
     //Set Ey parameters
     for (let i = 0; i < gridSizeX - 1; i++) {
         for (let j = 0; j < gridSizeY; j++) {
@@ -231,7 +231,7 @@ function setupUpdateParameters(){
             ARRmJy[j][i] = -1.0 / eps[j][i];
         }
     }
-    
+
     //Set Hz parameters
     for (let i = 0; i < gridSizeX - 1; i++) {
         for (let j = 0; j < gridSizeY - 1; j++) {
@@ -241,7 +241,7 @@ function setupUpdateParameters(){
             ARRmIHz[j][i] = -(1.0 / m0) * (dt / (eps[j][i] * eps[j][i])) * (sigmaEx[j][i] * sigmaEy[j][i]) / eps[j][i];
         }
     }
-    
+
     mEx = createExSizeTextureKernel(ARRmEx);
     mCHx = createExSizeTextureKernel(ARRmCHx);
     mICHx = createExSizeTextureKernel(ARRmICHx);
@@ -253,7 +253,7 @@ function setupUpdateParameters(){
     mHz = createHzSizeTextureKernel(ARRmHz);
     mCEz = createHzSizeTextureKernel(ARRmCEz);
     mIHz = createHzSizeTextureKernel(ARRmIHz);
-    
+
 }
 
 function updateFields() {
@@ -278,7 +278,7 @@ function updateFields() {
     //Sum H curl
     ICHx2 = updateExTypeSumKernel(ICHx, CHx);
     ICHx.delete();
-    ICHx = ICHx2;   
+    ICHx = ICHx2;
     ICHy2 = updateEyTypeSumKernel(ICHy, CHy);
     ICHy.delete();
     ICHy = ICHy2;
@@ -299,7 +299,7 @@ function updateFields() {
     //Iterate poisson solver for electrostatic field
     for (i = 0; i < 5; i++) {
         divEminusQ = calcDivEminusQKernel(Ex, Ey, q, eps);
-        
+
         Ex2 = updateExWithDivKernel(Ex, divEminusQ);
         Ex.delete();
         Ex = Ex2;
@@ -316,18 +316,18 @@ function updateFields() {
 
 
 
-function updateParticleState(){
+function updateParticleState() {
 
     let maxSpeed = 150;
 
     let particleXNew = smoothness * mouseX + (1.0 - smoothness) * particleX;
     let particleYNew = smoothness * mouseY + (1.0 - smoothness) * particleY;
 
-    let speed = (particleXNew - particleX)**2 + (particleYNew - particleY)**2;
-    if(speed > 10){
-        let speedDivisor = Math.sqrt(speed/maxSpeed)
-        particleXNew = (particleXNew - particleX)/speedDivisor + particleX;
-        particleYNew = (particleYNew - particleY)/speedDivisor + particleY;
+    let speed = (particleXNew - particleX) ** 2 + (particleYNew - particleY) ** 2;
+    if (speed > 10) {
+        let speedDivisor = Math.sqrt(speed / maxSpeed);
+        particleXNew = (particleXNew - particleX) / speedDivisor + particleX;
+        particleYNew = (particleYNew - particleY) / speedDivisor + particleY;
     }
 
     particleXVel = 0.2 * (particleXNew - particleX);
@@ -340,14 +340,14 @@ function updateParticleState(){
 
 function simulationStep() {
 
-    updateParticleState();//Update particle
+    updateParticleState(); //Update particle
 
     //Calculate source fields
     q = calculateQKernel(particleX, particleY);
     Jx = calculateJxKernel(particleX, particleY, particleXVel);
     Jy = calculateJyKernel(particleX, particleY, particleYVel);
 
-    updateFields();//Update fields
+    updateFields(); //Update fields
 
     //Delete source fields
     q.delete();
@@ -355,7 +355,7 @@ function simulationStep() {
     Jy.delete();
 
 
-    renderOutputKernel(Ex, Ey, Hz, Jx, q, eps);//Output
+    renderOutputKernel(Ex, Ey, Hz, Jx, q, eps); //Output
 
 
 }
@@ -368,9 +368,9 @@ function simulationLoop(time) {
     if (delta > interval) {
         then = time;
         newEnvironmentFunction();
-        newEnvironmentFunction = function(){};
+        newEnvironmentFunction = function() {};
         showPerformance(1000 / delta);
-        simulationStep();//Execute 2 steps for faster simulation
+        simulationStep(); //Execute 2 steps for faster simulation
         simulationStep();
     }
     requestAnimationFrame(simulationLoop);
@@ -378,8 +378,8 @@ function simulationLoop(time) {
 }
 
 
-gpucanvas.addEventListener('mousemove', function (e) {updateParticlePostion(gpucanvas, e)});//Setup mouse event\
-setupKernels();//Setup kernels
-initFields();//Setup fields
-setEnvVacuum();//Setup default enviorment
-requestAnimationFrame(simulationLoop);//Start animation
+gpucanvas.addEventListener('mousemove', e => updateParticlePostion(gpucanvas, e)); //Setup mouse event
+setupKernels(); //Setup kernels
+initFields(); //Setup fields
+setEnvVacuum(); //Setup default enviorment
+requestAnimationFrame(simulationLoop); //Start animation
