@@ -9,13 +9,15 @@ const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl2' });
 
 
 //Starting size
-var gridSizeX = 800;//window.innerWidth;
-var gridSizeY = 500;//window.innerHeight;
+var gridSizeX = 400;//window.innerWidth;
+var gridSizeY = 400;//window.innerHeight;
+
+var cellSize = 2;//Cell size in pixels, resulting canvas size is gridSize*cellSize
 
 const smoothness = 0.2;//Mouse smoothness
 
-var mouseX = gridSizeY / 2;//Mouse position
-var mouseY = gridSizeX / 2;
+var mouseX = gridSizeY / (2 * cellSize);//Mouse position
+var mouseY = gridSizeX / (2 * cellSize);
 
 
 //Used for frame timing
@@ -28,7 +30,7 @@ const interval = 1000 / 60;
 const perfSmoothness = 0.05;//Performance numbers smoothing constant
 var smoothedFps = 0;//Recorded FPS
 
-
+var newEnvironmentFunction = function(){};
 
 //Grid values
 var Ex;//EM Fields
@@ -54,6 +56,7 @@ var ICHy;
 var ICHx;
 var sigmaEx;//PML Sigmas
 var sigmaEy;
+var eps;
 
 //Kernels
 var updateExKernel;//Update equations
@@ -84,8 +87,14 @@ var particleYVel = 0;
 //Called when mouse updates
 function updateParticlePostion(canvas, event) {
     const rect = canvas.getBoundingClientRect();
-    mouseY = event.clientX - rect.left;
-    mouseX = gridSizeY - event.clientY + rect.top;
+    mouseY = (event.clientX - rect.left)/cellSize;
+    mouseX = gridSizeY - (event.clientY + rect.top)/cellSize + rect.top;
+}
+
+function keyPress(event){
+    if(event.keyCode == 114){
+        clearFields();
+    }
 }
 
 function createArray(sizeX, sizeY) {//Creates a 2D array
@@ -143,7 +152,7 @@ function createTextureFromArray(a) { //Convert an array to a texture
 
     a = textureGen(a);
 
-    textureGen.destroy();
+    //textureGen.destroy();
 
     return a;
 }
@@ -174,38 +183,55 @@ function initFields() {
     ICHy = createTexture(gridSizeY, gridSizeX - 1);
     IHz = createTexture(gridSizeY - 1, gridSizeX - 1);
 
-    //Update parameters for Ex update equation
-    mEx = createArray(gridSizeY - 1, gridSizeX);
-    mCHx = createArray(gridSizeY - 1, gridSizeX);
-    mICHx = createArray(gridSizeY - 1, gridSizeX);
-    mJx = createArray(gridSizeY - 1, gridSizeX);
-
-    //Update parameters for Ey update equation
-    mEy = createArray(gridSizeY, gridSizeX - 1);
-    mCHy = createArray(gridSizeY, gridSizeX - 1);
-    mICHy = createArray(gridSizeY, gridSizeX - 1);
-    mJy = createArray(gridSizeY, gridSizeX - 1);
-
-    //Update parameters for Hz update equation
-    mHz = createArray(gridSizeY - 1, gridSizeX - 1);
-    mCEz = createArray(gridSizeY - 1, gridSizeX - 1);
-    mIHz = createArray(gridSizeY - 1, gridSizeX - 1);
-
         
     sigmaEx = createArray(gridSizeY, gridSizeX);
     sigmaEy = createArray(gridSizeY, gridSizeX);
+
+    eps = createArray(gridSizeY, gridSizeX);
 
 }
 
 
 function setupUpdateParameters(){
 
+    if(typeof(mEx) != "undefined"){
+    mEx.delete();
+    mCHx.delete();
+    mICHx.delete();
+    mJx.delete();
+    mEy.delete();
+    mCHy.delete();
+    mICHy.delete();
+    mJy.delete();
+    mHz.delete();
+    mCEz.delete();
+    mIHz.delete();
+    }
+    //Update parameters for Ex update equation
+    ARRmEx = createArray(gridSizeY - 1, gridSizeX);
+    ARRmCHx = createArray(gridSizeY - 1, gridSizeX);
+    ARRmICHx = createArray(gridSizeY - 1, gridSizeX);
+    ARRmJx = createArray(gridSizeY - 1, gridSizeX);
+
+    //Update parameters for Ey update equation
+    ARRmEy = createArray(gridSizeY, gridSizeX - 1);
+    ARRmCHy = createArray(gridSizeY, gridSizeX - 1);
+    ARRmICHy = createArray(gridSizeY, gridSizeX - 1);
+    ARRmJy = createArray(gridSizeY, gridSizeX - 1);
+
+    //Update parameters for Hz update equation
+    ARRmHz = createArray(gridSizeY - 1, gridSizeX - 1);
+    ARRmCEz = createArray(gridSizeY - 1, gridSizeX - 1);
+    ARRmIHz = createArray(gridSizeY - 1, gridSizeX - 1);
+
+
+    
+
     var dx = 1.0; //DO NOT CHANGE!!!!!!!! This is assumed to be 1 in update equations
     var dt = 0.6;
-    var eps = 1.0;
     var mu = 1.0;
     
-    var c = 1.0 / Math.sqrt(eps * mu);
+    var c = 1.0 / Math.sqrt(1 * mu);
 
     var PMLWidth = 30;
 
@@ -213,15 +239,15 @@ function setupUpdateParameters(){
     for (let i = 0; i < gridSizeX; i++) {
         for (let j = 0; j < gridSizeY; j++) {
             if (i < PMLWidth)
-                sigmaEy[j][i] = eps / (2.0 * dt) * (1.0 - i / PMLWidth) * (1.0 - i / PMLWidth) * (1.0 - i / PMLWidth);
+                sigmaEy[j][i] = eps[j][i] / (2.0 * dt) * (1.0 - i / PMLWidth) * (1.0 - i / PMLWidth) * (1.0 - i / PMLWidth);
             if (i > gridSizeX - PMLWidth)
-                sigmaEy[j][i] = eps / (2.0 * dt) * (1.0 - (gridSizeX - i) / PMLWidth) * (1.0 - (gridSizeX - i) / PMLWidth) * (1.0 - (gridSizeX - i) / PMLWidth);
+                sigmaEy[j][i] = eps[j][i] / (2.0 * dt) * (1.0 - (gridSizeX - i) / PMLWidth) * (1.0 - (gridSizeX - i) / PMLWidth) * (1.0 - (gridSizeX - i) / PMLWidth);
     
     
             if (j < PMLWidth)
-                sigmaEx[j][i] = eps / (2.0 * dt) * (1.0 - j / PMLWidth) * (1.0 - j / PMLWidth) * (1.0 - j / PMLWidth);
+                sigmaEx[j][i] = eps[j][i] / (2.0 * dt) * (1.0 - j / PMLWidth) * (1.0 - j / PMLWidth) * (1.0 - j / PMLWidth);
             if (j > gridSizeY - PMLWidth)
-                sigmaEx[j][i] = eps / (2.0 * dt) * (1.0 - (gridSizeY - j) / PMLWidth) * (1.0 - (gridSizeY - j) / PMLWidth) * (1.0 - (gridSizeY - j) / PMLWidth);
+                sigmaEx[j][i] = eps[j][i] / (2.0 * dt) * (1.0 - (gridSizeY - j) / PMLWidth) * (1.0 - (gridSizeY - j) / PMLWidth) * (1.0 - (gridSizeY - j) / PMLWidth);
     
         }
     }
@@ -231,46 +257,46 @@ function setupUpdateParameters(){
     //Set Ex parameters
     for (let i = 0; i < gridSizeX; i++) {
         for (let j = 0; j < gridSizeY - 1; j++) {
-            let m0 = 1.0 / dt + (sigmaEy[j][i]) / (2.0 * eps);
-            mEx[j][i] = 1.0 / (m0) * (1.0 / dt - sigmaEy[j][i] / (2.0 * eps));
-            mCHx[j][i] = c / (m0 * eps);
-            mICHx[j][i] = (1.0 / m0) * (c * dt * sigmaEx[j][i]) / (eps * eps);
-            mJx[j][i] = -1.0 / eps;
+            let m0 = 1.0 / dt + (sigmaEy[j][i]) / (2.0 * eps[j][i]);
+            ARRmEx[j][i] = 1.0 / (m0) * (1.0 / dt - sigmaEy[j][i] / (2.0 * eps[j][i]));
+            ARRmCHx[j][i] = c / (m0 * eps[j][i]);
+            ARRmICHx[j][i] = (1.0 / m0) * (c * dt * sigmaEx[j][i]) / (eps[j][i] * eps[j][i]);
+            ARRmJx[j][i] = -1.0 / eps[j][i];
         }
     }
     
     //Set Ey parameters
     for (let i = 0; i < gridSizeX - 1; i++) {
         for (let j = 0; j < gridSizeY; j++) {
-            let m0 = 1.0 / dt + (sigmaEx[j][i]) / (2.0 * eps);
-            mEy[j][i] = (1.0 / m0) * (1.0 / dt - sigmaEx[j][i] / (2.0 * eps));
-            mCHy[j][i] = c / (m0 * eps);
-            mICHy[j][i] = (1.0 / m0) * (c * dt * sigmaEy[j][i]) / (eps * eps);
-            mJy[j][i] = -1.0 / eps;
+            let m0 = 1.0 / dt + (sigmaEx[j][i]) / (2.0 * eps[j][i]);
+            ARRmEy[j][i] = (1.0 / m0) * (1.0 / dt - sigmaEx[j][i] / (2.0 * eps[j][i]));
+            ARRmCHy[j][i] = c / (m0 * eps[j][i]);
+            ARRmICHy[j][i] = (1.0 / m0) * (c * dt * sigmaEy[j][i]) / (eps[j][i] * eps[j][i]);
+            ARRmJy[j][i] = -1.0 / eps[j][i];
         }
     }
     
     //Set Hz parameters
     for (let i = 0; i < gridSizeX - 1; i++) {
         for (let j = 0; j < gridSizeY - 1; j++) {
-            let m0 = 1.0 / dt + (sigmaEx[j][i] + sigmaEy[j][i]) / (2.0 * eps) + dt * (sigmaEx[j][i] * sigmaEy[j][i]) / (4.0 * eps * eps);
-            mHz[j][i] = 1.0 / m0 * (1.0 / dt - (sigmaEx[j][i] + sigmaEy[j][i]) / (2.0 * eps) - dt * (sigmaEx[j][i] * sigmaEy[j][i]) / (4.0 * eps * eps));
-            mCEz[j][i] = -(1.0 / m0) * (c / mu) / eps;
-            mIHz[j][i] = -(1.0 / m0) * (dt / (eps * eps)) * (sigmaEx[j][i] * sigmaEy[j][i]) / eps;
+            let m0 = 1.0 / dt + (sigmaEx[j][i] + sigmaEy[j][i]) / (2.0 * eps[j][i]) + dt * (sigmaEx[j][i] * sigmaEy[j][i]) / (4.0 * eps[j][i] * eps[j][i]);
+            ARRmHz[j][i] = 1.0 / m0 * (1.0 / dt - (sigmaEx[j][i] + sigmaEy[j][i]) / (2.0 * eps[j][i]) - dt * (sigmaEx[j][i] * sigmaEy[j][i]) / (4.0 * eps[j][i] * eps[j][i]));
+            ARRmCEz[j][i] = -(1.0 / m0) * (c / mu) / eps[j][i];
+            ARRmIHz[j][i] = -(1.0 / m0) * (dt / (eps[j][i] * eps[j][i])) * (sigmaEx[j][i] * sigmaEy[j][i]) / eps[j][i];
         }
     }
 
-    mEx = createTextureFromArray(mEx);
-    mCHx = createTextureFromArray(mCHx);
-    mICHx = createTextureFromArray(mICHx);
-    mJx = createTextureFromArray(mJx);
-    mEy = createTextureFromArray(mEy);
-    mCHy = createTextureFromArray(mCHy);
-    mICHy = createTextureFromArray(mICHy);
-    mJy = createTextureFromArray(mJy);
-    mHz = createTextureFromArray(mHz);
-    mCEz = createTextureFromArray(mCEz);
-    mIHz = createTextureFromArray(mIHz);
+    mEx = createTextureFromArray(ARRmEx);
+    mCHx = createTextureFromArray(ARRmCHx);
+    mICHx = createTextureFromArray(ARRmICHx);
+    mJx = createTextureFromArray(ARRmJx);
+    mEy = createTextureFromArray(ARRmEy);
+    mCHy = createTextureFromArray(ARRmCHy);
+    mICHy = createTextureFromArray(ARRmICHy);
+    mJy = createTextureFromArray(ARRmJy);
+    mHz = createTextureFromArray(ARRmHz);
+    mCEz = createTextureFromArray(ARRmCEz);
+    mIHz = createTextureFromArray(ARRmIHz);
 
 }
 
@@ -316,7 +342,7 @@ function updateFields() {
 
     //Iterate poisson solver for electrostatic field
     for (i = 0; i < 5; i++) {
-        divEminusQ = calcDivEminusQKernel(Ex, Ey, q);
+        divEminusQ = calcDivEminusQKernel(Ex, Ey, q, eps);
         
         Ex2 = updateExWithDivKernel(Ex, divEminusQ);
         Ex.delete();
@@ -335,11 +361,21 @@ function updateFields() {
 
 
 function updateParticleState(){
+
+    let maxSpeed = 90;
+
     let particleXNew = smoothness * mouseX + (1.0 - smoothness) * particleX;
     let particleYNew = smoothness * mouseY + (1.0 - smoothness) * particleY;
 
-    particleXVel = 0.1 * (particleXNew - particleX);
-    particleYVel = 0.1 * (particleYNew - particleY);
+    let speed = (particleXNew - particleX)**2 + (particleYNew - particleY)**2;
+    if(speed > 10){
+        let speedDivisor = Math.sqrt(speed/maxSpeed)
+        particleXNew = (particleXNew - particleX)/speedDivisor + particleX;
+        particleYNew = (particleYNew - particleY)/speedDivisor + particleY;
+    }
+
+    particleXVel = 0.2 * (particleXNew - particleX);
+    particleYVel = 0.2 * (particleYNew - particleY);
 
     particleX = particleXNew;
     particleY = particleYNew;
@@ -363,20 +399,23 @@ function simulationStep() {
     Jy.delete();
 
 
-    renderOutputKernel(Ex, Ey, Hz, Jx, q);//Output
+    renderOutputKernel(Ex, Ey, Hz, Jx, q, eps);//Output
 
 
 }
+
+
 
 function simulationLoop(time) {
     delta = time - then;
 
     if (delta > interval) {
         then = time;
+        newEnvironmentFunction();
+        newEnvironmentFunction = function(){};
         showPerformance(1000 / delta);
-        simulationStep();//Execute 3 steps for faster simulation
+        simulationStep();//Execute 2 steps for faster simulation
         simulationStep();
-        simulationStep()
     }
     requestAnimationFrame(simulationLoop);
 
@@ -386,5 +425,5 @@ function simulationLoop(time) {
 gpucanvas.addEventListener('mousemove', function (e) {updateParticlePostion(gpucanvas, e)});//Setup mouse event
 initFields();//Setup fields
 setupKernels();//Setup kernels
-setupUpdateParameters();//Setup update parameters
+setEnvVacuum();//Setup default enviorment
 requestAnimationFrame(simulationLoop);//Start animation

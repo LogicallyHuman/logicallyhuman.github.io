@@ -68,7 +68,7 @@ function calcCEz(Ex, Ey) {
 
 
 
-function calcDivEminusQ(Ex, Ey, q) {
+function calcDivEminusQ(Ex, Ey, q, eps) {
     let j = this.thread.x;
     let i = this.thread.y;
 
@@ -82,7 +82,7 @@ function calcDivEminusQ(Ex, Ey, q) {
         ret -= Ey[i][j - 1];
     if (i > 0)
         ret -= Ex[i - 1][j];
-    ret -= q[i][j];
+    ret -= q[i][j]/eps[i][j];
     return 0.24 * ret;
 
 }
@@ -129,7 +129,7 @@ function calculateJy(particleX, particleY, particleYVel) {
 //Particle size
 
 function S(i, x) {
-    let scale = 20.0;
+    let scale = 10.0;
 
     x /= scale;
     i /= scale;
@@ -160,10 +160,10 @@ function updateSum(sum, value) {
 
 //Output
 
-function renderOutput(Ex, Ey, Hz, Jx, q) {
+function renderOutput(Ex, Ey, Hz, Jx, q, eps) {
 
-    let j = this.thread.x;
-    let i = this.thread.y;
+    let j = this.thread.x/this.constants.cellSize;
+    let i = this.thread.y/this.constants.cellSize;
 
     let vEx = Ex[i][j];
     let vEy = Ey[i][j];
@@ -174,12 +174,15 @@ function renderOutput(Ex, Ey, Hz, Jx, q) {
     }
     else {
         this.color(
-            300 * Math.sqrt(Ex[i][j] * Ex[i][j] + Ey[i][j] * Ey[i][j]),
-            300 * Math.abs(Hz[i][j]),
-            0);
+            100 * Math.sqrt(Ex[i][j] * Ex[i][j] + Ey[i][j] * Ey[i][j])  + 0.1*(eps[i][j] - 1.0),
+            100 * Math.abs(Hz[i][j])+ 0.1*(eps[i][j] - 1.0),
+            0.1*(eps[i][j] - 1.0));
     }
 }
 
+function createEmptyTexture(){
+    return 0.0;
+}
 
 //Setup
 
@@ -204,6 +207,11 @@ function setupKernels() {
     calculateJxKernel = gpu.createKernel(calculateJx);
     calculateJyKernel = gpu.createKernel(calculateJy);
     renderOutputKernel = gpu.createKernel(renderOutput);
+    createExSizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
+    createEySizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
+    createHzSizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
+    createQSizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
+
 
     updateExKernel.setOutput([gridSizeX, gridSizeY - 1]);
     updateEyKernel.setOutput([gridSizeX - 1, gridSizeY]);
@@ -220,7 +228,12 @@ function setupKernels() {
     calculateQKernel.setOutput([gridSizeX, gridSizeY]);
     calculateJxKernel.setOutput([gridSizeX, gridSizeY - 1]);
     calculateJyKernel.setOutput([gridSizeX - 1, gridSizeY]);
-    renderOutputKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+    renderOutputKernel.setOutput([(gridSizeX - 1)*cellSize, (gridSizeY - 1)*cellSize]);
+    createExSizeEmptyTextureKernel.setOutput([gridSizeX, gridSizeY - 1]);
+    createEySizeEmptyTextureKernel.setOutput([gridSizeX - 1, gridSizeY]);
+    createHzSizeEmptyTextureKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
+    createQSizeEmptyTextureKernel.setOutput([gridSizeX, gridSizeY]);
+
 
     updateExKernel.setPipeline(true);
     updateEyKernel.setPipeline(true);
@@ -237,6 +250,10 @@ function setupKernels() {
     calculateQKernel.setPipeline(true);
     calculateJxKernel.setPipeline(true);
     calculateJyKernel.setPipeline(true);
+    createExSizeEmptyTextureKernel.setPipeline(true);
+    createEySizeEmptyTextureKernel.setPipeline(true);
+    createHzSizeEmptyTextureKernel.setPipeline(true);
+    createQSizeEmptyTextureKernel.setPipeline(true);
 
     updateExKernel.setImmutable(true);
     updateEyKernel.setImmutable(true);
@@ -253,6 +270,10 @@ function setupKernels() {
     calculateQKernel.setImmutable(true);
     calculateJxKernel.setImmutable(true);
     calculateJyKernel.setImmutable(true);
+    createExSizeEmptyTextureKernel.setImmutable(true);
+    createEySizeEmptyTextureKernel.setImmutable(true);
+    createHzSizeEmptyTextureKernel.setImmutable(true);
+    createQSizeEmptyTextureKernel.setImmutable(true);
 
     calcCHxKernel.setConstants({sizeY: gridSizeX, sizeX: gridSizeY });
     calcCHyKernel.setConstants({sizeY: gridSizeX, sizeX: gridSizeY });
@@ -260,6 +281,7 @@ function setupKernels() {
     updateExWithDivKernel.setConstants({ sizeY: gridSizeX, sizeX: gridSizeY });
     updateEyWithDivKernel.setConstants({ sizeY: gridSizeX, sizeX: gridSizeY });
     calcDivEminusQKernel.setConstants({ sizeY: gridSizeX, sizeX: gridSizeY });
+    renderOutputKernel.setConstants({ cellSize: cellSize});
 
     renderOutputKernel.setGraphical(true)
 
