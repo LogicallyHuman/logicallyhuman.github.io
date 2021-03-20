@@ -25,10 +25,7 @@ function clearFields() {
 
 
 function setEnvVacuum() {
-
-    newEnvironmentFunction = function() {
-
-
+    newEnvironmentFunction = () => {
         for (let i = 0; i < gridSizeX; i++) {
             for (let j = 0; j < gridSizeY; j++) {
                 eps[j][i] = 1.0;
@@ -36,15 +33,11 @@ function setEnvVacuum() {
         }
 
         setupUpdateParameters();
-
-    }
+    };
 }
 
 function setEnvHalfDielectric() {
-
-    newEnvironmentFunction = function() {
-
-
+    newEnvironmentFunction = () => {
         for (let i = 0; i < gridSizeX; i++) {
             for (let j = 0; j < gridSizeY; j++) {
                 eps[j][i] = (j < gridSizeY / 2) ? 3 : 1.0;
@@ -52,16 +45,11 @@ function setEnvHalfDielectric() {
         }
 
         setupUpdateParameters();
-
-    }
-
+    };
 }
 
 function setEnvCircle() {
-
-    newEnvironmentFunction = function() {
-
-
+    newEnvironmentFunction = () => {
         for (let i = 0; i < gridSizeX; i++) {
             for (let j = 0; j < gridSizeY; j++) {
                 eps[j][i] = (i - gridSizeX / 2) * (i - gridSizeX / 2) + (j - gridSizeY / 2) * (j - gridSizeY / 2) < gridSizeX / 5 * gridSizeX / 5 ? 3 : 1.0;
@@ -69,17 +57,12 @@ function setEnvCircle() {
         }
 
         setupUpdateParameters();
-
-    }
-
+    };
 }
 
 
 function setEnvParabolicMirror() {
-
-    newEnvironmentFunction = function() {
-
-
+    newEnvironmentFunction = () => {
         for (let i = 0; i < gridSizeX; i++) {
             for (let j = 0; j < gridSizeY; j++) {
                 eps[j][i] = j < 4 * ((i - gridSizeX / 2) ** 2) / gridSizeX ** 2 * (gridSizeY / 2 - gridSizeY / 20) + gridSizeY / 20 ? 1100 : 1.0;
@@ -88,6 +71,5 @@ function setEnvParabolicMirror() {
 
         setupUpdateParameters();
 
-    }
-
+    };
 }
