@@ -10,6 +10,7 @@
 <head>
 	<title>Feel an electron</title>
 	<link rel="stylesheet" href="style.css">
+
 </head>
 
 <body onkeypress="keyPress(event)">
@@ -19,21 +20,30 @@
 	<canvas id="canvas" width="1" height="1"></canvas>
 	</td>
 	<td >
-		<b id="gputime-text">0</b>
-		<b>FPS</b>
-	<br>
-	</td>
-	<td>
-		<button class="set-vacuum" onclick="setEnvVacuum()">Vacuum</button>
-		<button class="set-half-dielectric"  onclick="setEnvHalfDielectric()">Half dielectric</button>
-	</td>
-	</tr>
+		<table>
+			<tr>
+				<b id="gputime-text">0</b>
+				<b>FPS</b>
+			<br>
+			</td>
+			<td>
+				<button class="set-vacuum" onclick="setEnvVacuum()">Vacuum</button>
+				<button class="set-half-dielectric"  onclick="setEnvHalfDielectric()">Half dielectric</button>
+				<button class="set-circle"  onclick="setEnvCircle()">Circle</button>
+				<button class="set-parabolic-mirror"  onclick="setEnvParabolicMirror()">Parabolic mirror</button>
+			</td>
+			</tr>
+			<tr>
+				Press R to reset fields
+			</tr>
+			</tr>
+		</table>
 
   </table>
 
   
 </body>
-
 <script src="main.js"> </script>
+
 
 </html>

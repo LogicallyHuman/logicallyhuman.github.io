@@ -75,7 +75,7 @@ var calculateQKernel;//Source field kernels
 var calculateJxKernel;
 var calculateJyKernel;
 var renderOutputKernel;//Output kernel
-
+var createExSizeTextureKernel;
 //Particle position
 var particleX = gridSizeY / 2;
 var particleY = gridSizeX / 2;
@@ -84,8 +84,6 @@ var particleY = gridSizeX / 2;
 var particleXVel = 0;
 var particleYVel = 0;
 
-var textureKernel = gpu.createKernel(function(a) {return a[this.thread.y][this.thread.x];})
-.setDynamicOutput(true).setDynamicArguments(true).setPipeline(true).setImmutable(true);
 
 //Called when mouse updates
 function updateParticlePostion(canvas, event) {
@@ -94,6 +92,7 @@ function updateParticlePostion(canvas, event) {
     mouseX = gridSizeY - (event.clientY + rect.top)/cellSize + rect.top;
 }
 
+//Called when key is pressed
 function keyPress(event){
     if(event.keyCode == 114){
         clearFields();
@@ -112,38 +111,6 @@ function createArray(sizeX, sizeY) {//Creates a 2D array
     return a;
 }
 
-function createTexture(sizeX, sizeY) { //Creates a 2D texture
-
-    
-
-    textureKernel.setOutput([sizeY, sizeX]);
-
-    let a = new Array(sizeX);
-
-    for (let i = 0; i < sizeX; i++) {
-        a[i] = new Array(sizeY);
-        for (let j = 0; j < sizeY; j++) {
-            a[i][j] = 0.0;
-        }
-    }
-
-    a = textureKernel(a);
-
-
-    return a;
-}
-
-
-function createTextureFromArray(a) { //Convert an array to a texture
-    let sizeX = a.length;
-    let sizeY = a[0].length;
-
-    textureKernel.setOutput([sizeY, sizeX]);
-
-    a = textureKernel(a);
-
-    return a;
-}
 
 function showPerformance(fps) {//Update HTML Performance numbers
     smoothedFps = perfSmoothness * fps + (1.0 - perfSmoothness) * smoothedFps;
@@ -154,35 +121,35 @@ function initFields() {
 
 
     //Main EM Fields
-    Hz = createTexture(gridSizeY - 1, gridSizeX - 1);
-    Ex = createTexture(gridSizeY - 1, gridSizeX);
-    Ey = createTexture(gridSizeY, gridSizeX - 1);
+    Hz = createHzSizeEmptyTextureKernel();
+    Ex = createExSizeEmptyTextureKernel();
+    Ey = createEySizeEmptyTextureKernel();
 
     //Source fields
-    q = createTexture(gridSizeY, gridSizeX);
-    Jx = createTexture(gridSizeY - 1, gridSizeX);
-    Jy = createTexture(gridSizeY, gridSizeX - 1);
+    q = createQSizeEmptyTextureKernel();
+    Jx = createExSizeEmptyTextureKernel();
+    Jy = createEySizeEmptyTextureKernel();
 
     //Aux fields used for compuation
-    divEminusQ = createTexture(gridSizeY, gridSizeX);
+    divEminusQ = createQSizeEmptyTextureKernel();
 
     //Sumation Fields, needed for PML
-    ICHx = createTexture(gridSizeY - 1, gridSizeX);
-    ICHy = createTexture(gridSizeY, gridSizeX - 1);
-    IHz = createTexture(gridSizeY - 1, gridSizeX - 1);
+    ICHx = createExSizeEmptyTextureKernel();
+    ICHy = createEySizeEmptyTextureKernel();
+    IHz = createHzSizeEmptyTextureKernel();
 
         
-    sigmaEx = createArray(gridSizeY, gridSizeX);
-    sigmaEy = createArray(gridSizeY, gridSizeX);
+    sigmaEx = createArray(gridSizeX, gridSizeY);
+    sigmaEy = createArray(gridSizeX, gridSizeY);
 
-    eps = createArray(gridSizeY, gridSizeX);
+    eps = createArray(gridSizeX, gridSizeY);
 
 }
 
 
 function setupUpdateParameters(){
 
-    if(typeof(mEx) != "undefined"){
+    if(typeof(mEx) != "undefined"){//If the parameters already exist, delete them
     mEx.delete();
     mCHx.delete();
     mICHx.delete();
@@ -195,6 +162,7 @@ function setupUpdateParameters(){
     mCEz.delete();
     mIHz.delete();
     }
+
     //Update parameters for Ex update equation
     ARRmEx = createArray(gridSizeY - 1, gridSizeX);
     ARRmCHx = createArray(gridSizeY - 1, gridSizeX);
@@ -273,19 +241,19 @@ function setupUpdateParameters(){
             ARRmIHz[j][i] = -(1.0 / m0) * (dt / (eps[j][i] * eps[j][i])) * (sigmaEx[j][i] * sigmaEy[j][i]) / eps[j][i];
         }
     }
-
-    mEx = createTextureFromArray(ARRmEx);
-    mCHx = createTextureFromArray(ARRmCHx);
-    mICHx = createTextureFromArray(ARRmICHx);
-    mJx = createTextureFromArray(ARRmJx);
-    mEy = createTextureFromArray(ARRmEy);
-    mCHy = createTextureFromArray(ARRmCHy);
-    mICHy = createTextureFromArray(ARRmICHy);
-    mJy = createTextureFromArray(ARRmJy);
-    mHz = createTextureFromArray(ARRmHz);
-    mCEz = createTextureFromArray(ARRmCEz);
-    mIHz = createTextureFromArray(ARRmIHz);
-
+    
+    mEx = createExSizeTextureKernel(ARRmEx);
+    mCHx = createExSizeTextureKernel(ARRmCHx);
+    mICHx = createExSizeTextureKernel(ARRmICHx);
+    mJx = createExSizeTextureKernel(ARRmJx);
+    mEy = createEySizeTextureKernel(ARRmEy);
+    mCHy = createEySizeTextureKernel(ARRmCHy);
+    mICHy = createEySizeTextureKernel(ARRmICHy);
+    mJy = createEySizeTextureKernel(ARRmJy);
+    mHz = createHzSizeTextureKernel(ARRmHz);
+    mCEz = createHzSizeTextureKernel(ARRmCEz);
+    mIHz = createHzSizeTextureKernel(ARRmIHz);
+    
 }
 
 function updateFields() {
@@ -350,7 +318,7 @@ function updateFields() {
 
 function updateParticleState(){
 
-    let maxSpeed = 90;
+    let maxSpeed = 150;
 
     let particleXNew = smoothness * mouseX + (1.0 - smoothness) * particleX;
     let particleYNew = smoothness * mouseY + (1.0 - smoothness) * particleY;
@@ -410,8 +378,8 @@ function simulationLoop(time) {
 }
 
 
-gpucanvas.addEventListener('mousemove', function (e) {updateParticlePostion(gpucanvas, e)});//Setup mouse event
-initFields();//Setup fields
+gpucanvas.addEventListener('mousemove', function (e) {updateParticlePostion(gpucanvas, e)});//Setup mouse event\
 setupKernels();//Setup kernels
+initFields();//Setup fields
 setEnvVacuum();//Setup default enviorment
 requestAnimationFrame(simulationLoop);//Start animation

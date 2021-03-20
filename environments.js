@@ -10,40 +10,25 @@ function clearFields(){
     Jx.delete();
     Jy.delete();
 
-   /* Ex = createTexture(gridSizeY - 1, gridSizeX)
-    Ey = createTexture(gridSizeY, gridSizeX - 1);
-    Hz = createTexture(gridSizeY - 1, gridSizeX - 1);
-    ICHx = createTexture(gridSizeY - 1, gridSizeX)
-    ICHy = createTexture(gridSizeY, gridSizeX - 1);
-    IHz = createTexture(gridSizeY - 1, gridSizeX - 1);
-    divEminusQ = createTexture(gridSizeY , gridSizeX );
-    q = createTexture(gridSizeY , gridSizeX );
-    Jx = createTexture(gridSizeY - 1, gridSizeX)
-    Jy = createTexture(gridSizeY, gridSizeX - 1);*/
-
-    Ex = createTexture(gridSizeY - 1, gridSizeX)
-    Ey = createTexture(gridSizeY, gridSizeX - 1);
-    Hz = createTexture(gridSizeY - 1, gridSizeX - 1);
-    ICHx = createTexture(gridSizeY - 1, gridSizeX)
-    ICHy = createTexture(gridSizeY, gridSizeX - 1);
-    IHz = createTexture(gridSizeY - 1, gridSizeX - 1);
-    divEminusQ = createTexture(gridSizeY , gridSizeX );
-    q = createTexture(gridSizeY , gridSizeX );
-    Jx = createTexture(gridSizeY - 1, gridSizeX)
-    Jy = createTexture(gridSizeY, gridSizeX - 1);
-
-
+    Ex = createExSizeEmptyTextureKernel();
+    Ey = createEySizeEmptyTextureKernel();
+    Hz = createHzSizeEmptyTextureKernel();
+    ICHx = createExSizeEmptyTextureKernel();
+    ICHy = createEySizeEmptyTextureKernel();
+    IHz = createHzSizeEmptyTextureKernel();
+    divEminusQ = createQSizeEmptyTextureKernel();
+    q = createQSizeEmptyTextureKernel();
+    Jx = createEySizeEmptyTextureKernel();
+    Jy = createEySizeEmptyTextureKernel();
 }
+
+
 
 function setEnvVacuum(){
 
     newEnvironmentFunction = function(){
-    particleX = gridSizeX/2;
-    particleY = gridSizeY/2;
-    mouseX = gridSizeX/2;
-    mouseY = gridSizeY/2;
 
-    clearFields();
+
     for(let i = 0; i < gridSizeX; i++){
         for(let j = 0; j < gridSizeY; j++){
             eps[j][i] = 1.0;
@@ -58,12 +43,7 @@ function setEnvVacuum(){
 function setEnvHalfDielectric(){
     
         newEnvironmentFunction = function(){
-            particleX = gridSizeX/2;
-            particleY = gridSizeY/2;
-            mouseX = gridSizeX/2;
-            mouseY = gridSizeY/2;
-        
-            clearFields();
+
 
             for(let i = 0; i < gridSizeX; i++){
                 for(let j = 0; j < gridSizeY; j++){
@@ -74,5 +54,40 @@ function setEnvHalfDielectric(){
             setupUpdateParameters();
         
         }
+
+}
+
+function setEnvCircle(){
+    
+    newEnvironmentFunction = function(){
+
+
+        for(let i = 0; i < gridSizeX; i++){
+            for(let j = 0; j < gridSizeY; j++){
+                eps[j][i] = (i - gridSizeX/2)*(i - gridSizeX/2) + (j - gridSizeY/2)*(j - gridSizeY/2) < gridSizeX/5*gridSizeX/5? 3 : 1.0;
+            }        
+        }
+    
+        setupUpdateParameters();
+    
+    }
+
+}
+
+
+function setEnvParabolicMirror(){
+    
+    newEnvironmentFunction = function(){
+
+
+        for(let i = 0; i < gridSizeX; i++){
+            for(let j = 0; j < gridSizeY; j++){
+                eps[j][i] = j < 4*((i-gridSizeX/2)**2)/gridSizeX**2*(gridSizeY/2 - gridSizeY/20)+ gridSizeY/20? 1100 : 1.0;
+            }        
+        }
+    
+        setupUpdateParameters();
+    
+    }
 
 }
