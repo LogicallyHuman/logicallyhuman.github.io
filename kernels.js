@@ -207,10 +207,10 @@ function setupKernels() {
     calculateJxKernel = gpu.createKernel(calculateJx);
     calculateJyKernel = gpu.createKernel(calculateJy);
     renderOutputKernel = gpu.createKernel(renderOutput);
-    createExSizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
+    /*createExSizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
     createEySizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
     createHzSizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
-    createQSizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);
+    createQSizeEmptyTextureKernel = gpu.createKernel(createEmptyTexture);*/
 
 
     updateExKernel.setOutput([gridSizeX, gridSizeY - 1]);
@@ -229,10 +229,10 @@ function setupKernels() {
     calculateJxKernel.setOutput([gridSizeX, gridSizeY - 1]);
     calculateJyKernel.setOutput([gridSizeX - 1, gridSizeY]);
     renderOutputKernel.setOutput([(gridSizeX - 1)*cellSize, (gridSizeY - 1)*cellSize]);
-    createExSizeEmptyTextureKernel.setOutput([gridSizeX, gridSizeY - 1]);
+   /* createExSizeEmptyTextureKernel.setOutput([gridSizeX, gridSizeY - 1]);
     createEySizeEmptyTextureKernel.setOutput([gridSizeX - 1, gridSizeY]);
     createHzSizeEmptyTextureKernel.setOutput([gridSizeX - 1, gridSizeY - 1]);
-    createQSizeEmptyTextureKernel.setOutput([gridSizeX, gridSizeY]);
+    createQSizeEmptyTextureKernel.setOutput([gridSizeX, gridSizeY]);*/
 
 
     updateExKernel.setPipeline(true);
@@ -250,10 +250,10 @@ function setupKernels() {
     calculateQKernel.setPipeline(true);
     calculateJxKernel.setPipeline(true);
     calculateJyKernel.setPipeline(true);
-    createExSizeEmptyTextureKernel.setPipeline(true);
+  /*  createExSizeEmptyTextureKernel.setPipeline(true);
     createEySizeEmptyTextureKernel.setPipeline(true);
     createHzSizeEmptyTextureKernel.setPipeline(true);
-    createQSizeEmptyTextureKernel.setPipeline(true);
+    createQSizeEmptyTextureKernel.setPipeline(true);*/
 
     updateExKernel.setImmutable(true);
     updateEyKernel.setImmutable(true);
@@ -270,10 +270,10 @@ function setupKernels() {
     calculateQKernel.setImmutable(true);
     calculateJxKernel.setImmutable(true);
     calculateJyKernel.setImmutable(true);
-    createExSizeEmptyTextureKernel.setImmutable(true);
+   /* createExSizeEmptyTextureKernel.setImmutable(true);
     createEySizeEmptyTextureKernel.setImmutable(true);
     createHzSizeEmptyTextureKernel.setImmutable(true);
-    createQSizeEmptyTextureKernel.setImmutable(true);
+    createQSizeEmptyTextureKernel.setImmutable(true);*/
 
     calcCHxKernel.setConstants({sizeY: gridSizeX, sizeX: gridSizeY });
     calcCHyKernel.setConstants({sizeY: gridSizeX, sizeX: gridSizeY });

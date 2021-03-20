@@ -10,16 +10,27 @@ function clearFields(){
     Jx.delete();
     Jy.delete();
 
-    Ex = createExSizeEmptyTextureKernel();
-    Ey = createEySizeEmptyTextureKernel();
-    Hz = createHzSizeEmptyTextureKernel();
-    ICHx = createExSizeEmptyTextureKernel();
-    ICHy = createEySizeEmptyTextureKernel();
-    IHz = createHzSizeEmptyTextureKernel();
-    divEminusQ = createQSizeEmptyTextureKernel();
-    q = createQSizeEmptyTextureKernel();
-    Jx = createExSizeEmptyTextureKernel();
-    Jy = createEySizeEmptyTextureKernel();
+   /* Ex = createTexture(gridSizeY - 1, gridSizeX)
+    Ey = createTexture(gridSizeY, gridSizeX - 1);
+    Hz = createTexture(gridSizeY - 1, gridSizeX - 1);
+    ICHx = createTexture(gridSizeY - 1, gridSizeX)
+    ICHy = createTexture(gridSizeY, gridSizeX - 1);
+    IHz = createTexture(gridSizeY - 1, gridSizeX - 1);
+    divEminusQ = createTexture(gridSizeY , gridSizeX );
+    q = createTexture(gridSizeY , gridSizeX );
+    Jx = createTexture(gridSizeY - 1, gridSizeX)
+    Jy = createTexture(gridSizeY, gridSizeX - 1);*/
+
+    Ex = createTexture(gridSizeY - 1, gridSizeX)
+    Ey = createTexture(gridSizeY, gridSizeX - 1);
+    Hz = createTexture(gridSizeY - 1, gridSizeX - 1);
+    ICHx = createTexture(gridSizeY - 1, gridSizeX)
+    ICHy = createTexture(gridSizeY, gridSizeX - 1);
+    IHz = createTexture(gridSizeY - 1, gridSizeX - 1);
+    divEminusQ = createTexture(gridSizeY , gridSizeX );
+    q = createTexture(gridSizeY , gridSizeX );
+    Jx = createTexture(gridSizeY - 1, gridSizeX)
+    Jy = createTexture(gridSizeY, gridSizeX - 1);
 
 
 }

@@ -84,6 +84,9 @@ var particleY = gridSizeX / 2;
 var particleXVel = 0;
 var particleYVel = 0;
 
+var textureKernel = gpu.createKernel(function(a) {return a[this.thread.y][this.thread.x];})
+.setDynamicOutput(true).setDynamicArguments(true).setPipeline(true).setImmutable(true);
+
 //Called when mouse updates
 function updateParticlePostion(canvas, event) {
     const rect = canvas.getBoundingClientRect();
@@ -111,14 +114,9 @@ function createArray(sizeX, sizeY) {//Creates a 2D array
 
 function createTexture(sizeX, sizeY) { //Creates a 2D texture
 
-    function copy(a) {
-        return a[this.thread.y][this.thread.x];
-    }
+    
 
-    textureGen = gpu.createKernel(copy);
-    textureGen.setOutput([sizeY, sizeX]);
-    textureGen.setPipeline(true);
-    textureGen.setImmutable(true);
+    textureKernel.setOutput([sizeY, sizeX]);
 
     let a = new Array(sizeX);
 
@@ -129,9 +127,8 @@ function createTexture(sizeX, sizeY) { //Creates a 2D texture
         }
     }
 
-    a = textureGen(a);
+    a = textureKernel(a);
 
-    textureGen.destroy();
 
     return a;
 }
@@ -141,18 +138,9 @@ function createTextureFromArray(a) { //Convert an array to a texture
     let sizeX = a.length;
     let sizeY = a[0].length;
 
-    function copy(a) {
-        return a[this.thread.y][this.thread.x];
-    }
+    textureKernel.setOutput([sizeY, sizeX]);
 
-    textureGen = gpu.createKernel(copy);
-    textureGen.setOutput([sizeY, sizeX]);
-    textureGen.setPipeline(true);
-    textureGen.setImmutable(true);
-
-    a = textureGen(a);
-
-    //textureGen.destroy();
+    a = textureKernel(a);
 
     return a;
 }
