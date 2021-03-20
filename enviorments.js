@@ -1,4 +1,4 @@
-function clearFields(){
+function clearFields() {
     Ex.clear();
     Ey.clear();
     Hz.clear();
@@ -11,36 +11,36 @@ function clearFields(){
     Jy.clear();
 }
 
-function setEnvVacuum(){
+function setEnvVacuum() {
 
-    newEnviormentFunction = function(){
-        
-    for(let i = 0; i < gridSizeX; i++){
-        for(let j = 0; j < gridSizeY; j++){
-            eps[j][i] = 1.0;
-        }        
-    }
+    newEnviormentFunction = function() {
 
-    
+        for (let i = 0; i < gridSizeX; i++) {
+            for (let j = 0; j < gridSizeY; j++) {
+                eps[j][i] = 1.0;
+            }
+        }
+
+
     }
 }
 
-function setEnvHalfDielectric(){
+function setEnvHalfDielectric() {
     clearFields();
 
 }
 
 
-function setEnvVacuum(){
+function setEnvVacuum() {
 
-    for(let i = 0; i < gridSizeX; i++){
-        for(let j = 0; j < gridSizeY; j++){
+    for (let i = 0; i < gridSizeX; i++) {
+        for (let j = 0; j < gridSizeY; j++) {
             eps[j][i] = 1.0;
-        }        
+        }
     }
 }
 
-function setEnvHalfDielectric(){
+function setEnvHalfDielectric() {
     clearFields();
 
 }
