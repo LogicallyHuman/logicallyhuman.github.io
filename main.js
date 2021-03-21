@@ -6,13 +6,10 @@ let fpsText = document.getElementById("gputime-text");
 const gpu = new GPU({ canvas: gpucanvas, mode: 'webgl2' });
 
 //Starting size
-let gridSizeX = Math.min(800, Math.floor(window.innerWidth / 2));
-let gridSizeY = Math.min(800, Math.floor(window.innerHeight / 2));
+let gridSizeX = Math.min(400, Math.floor(window.innerWidth / 3));
+let gridSizeY = Math.min(400, Math.floor(window.innerHeight / 3));
 
-if (gridSizeX < gridSizeY) gridSizeY = gridSizeX;
-if (gridSizeY < gridSizeX) gridSizeX = gridSizeY;
-
-let cellSize = 1; //Cell size in pixels, resulting canvas size is gridSize*cellSize
+let cellSize = 2; //Cell size in pixels, resulting canvas size is gridSize*cellSize
 
 const smoothness = 0.2; //Mouse smoothness
 
@@ -21,16 +18,15 @@ let mouseY = gridSizeX / (2 * cellSize);
 
 
 //Used for frame timing
-let delta = 0;
-let then = 0;
-const interval = 1000 / 60;
+var previousFrameTime = 0;
+
 
 
 //Used for performance display
 const perfSmoothness = 0.05; //Performance numbers smoothing constant
 let smoothedFps = 0; //Recorded FPS
 
-let newEnvironmentFunction = () => {};
+let newEnvironmentFunction = () => { };
 
 //Grid values
 let Ex; //EM Fields
@@ -151,17 +147,17 @@ function initFields() {
     IHz = createHzSizeEmptyTextureKernel();
 
 
-    sigmaEx = createArray(gridSizeX, gridSizeY);
-    sigmaEy = createArray(gridSizeX, gridSizeY);
+    sigmaEx = createArray(gridSizeY, gridSizeX);
+    sigmaEy = createArray(gridSizeY, gridSizeX);
 
-    eps = createArray(gridSizeX, gridSizeY);
+    eps = createArray(gridSizeY, gridSizeX);
 
 }
 
 
 function setupUpdateParameters() {
 
-    if (typeof(mEx) != "undefined") { //If the parameters already exist, delete them
+    if (typeof (mEx) != "undefined") { //If the parameters already exist, delete them
         mEx.delete();
         mCHx.delete();
         mICHx.delete();
@@ -375,18 +371,17 @@ function simulationStep() {
 
 
 function simulationLoop(time) {
-    delta = time - then;
+    newEnvironmentFunction();
+    newEnvironmentFunction = () => { };
 
-    if (delta > interval) {
-        then = time;
-        newEnvironmentFunction();
-        newEnvironmentFunction = () => {};
-        showPerformance(1000 / delta);
-        simulationStep(); //Execute 2 steps for faster simulation
-        simulationStep();
-    }
+    showPerformance(1000 / (time - previousFrameTime));
+
+    simulationStep(); //Execute 2 steps for faster simulation
+    simulationStep();
+
+    previousFrameTime = time;
+    
     requestAnimationFrame(simulationLoop);
-
 }
 
 
