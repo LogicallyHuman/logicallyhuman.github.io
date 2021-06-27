@@ -191,7 +191,7 @@ function setupUpdateParameters() {
 
 
 
-    let dx = 1.0; //DO NOT CHANGE!!!!!!!! This is assumed to be 1 in update equations
+    let dx = 1.0; //THIS HAS NO EFFECT!!!!!!!! This is assumed to be 1 in update equations
     let dt = 0.6;
     let mu = 1.0;
 

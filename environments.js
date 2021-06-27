@@ -73,3 +73,33 @@ function setEnvParabolicMirror() {
 
     };
 }
+
+function setEnvDoubleSlit() {
+    newEnvironmentFunction = () => {
+
+        var slitWidth = 10;
+        var slitDistance = 40;
+
+        for (let i = 0; i < gridSizeX; i++) {
+            for (let j = 0; j < gridSizeY; j++) {
+                eps[j][i] = 1.0;
+            }
+        }
+
+        for (let i = gridSizeX/2 - 2; i < gridSizeX/2 + 2; i++) {
+            for (let j = 0; j < gridSizeY/2 - slitDistance/2 - slitWidth/2; j++) {
+                eps[j][i] = 1100.0;
+            }
+            for (let j = gridSizeY/2 - slitDistance/2 + slitWidth/2; j < gridSizeY/2 + slitDistance/2 - slitWidth/2; j++) {
+                eps[j][i] = 1100.0;
+            }
+            for (let j = gridSizeY/2 + slitDistance/2 + slitWidth/2; j < gridSizeY; j++) {
+                eps[j][i] = 1100.0;
+            }
+
+        }
+
+        setupUpdateParameters();
+
+    };
+}
